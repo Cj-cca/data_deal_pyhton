@@ -20,7 +20,7 @@ FieldsDate = ['employment_start_date_1', 'leave_start_date', 'employment_start_d
               'end_international_employment_date_0', 'term_date'
               ]
 FieldsCountry = ["home_country", "home_country_2", "host_country", "host_country_2", "working_territory_0",
-                 "working_territory_1", "education_country"]
+                 "working_territory_1", "education_country", "nationality"]
 notNullFieldList = ["worker_id", "cost_center_hierarchy_name", "cost_center_hierarchy_code",
                     "cost_center_hierarchy_reference_id", "department_name", "department_reference_id",
                     "cost_center_name", "cost_center_code", "cost_center_reference_id", "company_name",

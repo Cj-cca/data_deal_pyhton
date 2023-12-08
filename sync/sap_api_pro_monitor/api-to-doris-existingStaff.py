@@ -24,7 +24,7 @@ FieldsDate = ['employment_start_date_1', 'leave_start_date', 'employment_start_d
               'compensation_effective_date', 'leave_end_date', 'end_international_employment_date_1',
               'employee_contract_effective_date', 'end_international_employment_date_0']
 FieldsCountry = ["home_country", "home_country_2", "host_country", "host_country_2", "working_territory_0",
-                 "working_territory_1", "education_country"]
+                 "working_territory_1", "education_country", "nationality"]
 resultColumn = ["worker_id", "location_0", "employment_start_date_1", "department_name_2", "cost_center_hierarchy_code",
                 "office_city_1", "guid", "hkg_staff_id", "public_email_secondary", "coach_reference_id_2",
                 "leave_start_date", "exclude_from_headcount_0", "chn_staff_id", "job_grade",

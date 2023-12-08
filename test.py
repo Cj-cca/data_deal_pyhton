@@ -255,8 +255,6 @@ def a():
 
 if __name__ == '__main__':
     dit = {"A": {"a": "str"}}
-    print((7077 + 7077*1.6)/2*32*0.011)
-    print((7077 + 7077*1.5)/2*32*0.011)
 
     # execSql = f"show create table aaa"
     # orgCursor = DorisConnection.getCursor(host="CNCSQLPWV5027", user="M·iddlePlatform", password="!QAZ@WSX#edc", port=1800, database=dataBase)
