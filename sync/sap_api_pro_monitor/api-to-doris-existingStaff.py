@@ -165,6 +165,7 @@ exceptionDataColumn_ods = ['unique_code', 'create_date', 'api_name', 'exception_
                            'exception_type']
 
 apiName = 'Existing_Staff'
+apiDataCount = 0
 apiUniqueKey = 'worker_id'
 fieldNullException = 'Field_Null_Value'
 fieldLengthException = 'Field_Length_Excess'
@@ -180,6 +181,19 @@ batchID = 0
 avgCostTime = 0
 maxCostTime = 0
 createTime = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def getToken(url, user, pwd):
+    credentials = f"{user}:{pwd}"
+    encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+    auth = f"Basic {encoded_credentials}"
+    headers = {
+        "Authorization": auth
+    }
+    response = requests.get(url, headers=headers, verify=False).json()
+    data_frame = pandas.json_normalize(response)
+    result = data_frame.get(["token_type", "access_token"])
+    return ' '.join(result.values.tolist()[0])
 
 
 def syncApiData(user_name, password, query_url, page_index=1, offset=0):
@@ -207,12 +221,17 @@ def syncApiData(user_name, password, query_url, page_index=1, offset=0):
     deal_ods_detail(response, query_url, page_index)
     deal_dwd(response)
     print(f"======page {page_index} data sync complete, cost {round(time.time() - start, 2)}s======")
-    if len(response['fullWorkerList']) != 0:
+    # if len(response['fullWorkerList']) != 0:
+    #     page_index += 1
+    #     offset += 1000
+    #     syncApiData(user_name, password, query_url, page_index=page_index, offset=offset)
+    if offset < apiDataCount:
         page_index += 1
         offset += 1000
         syncApiData(user_name, password, query_url, page_index=page_index, offset=offset)
     else:
         avgCostTime /= page_index
+        print(f"数据同步完成，offset: {offset}")
 
 
 def deal_ods_detail(response, query_url, page_index=1):
@@ -373,9 +392,26 @@ def truncate_table(engine, table_name):
     print("table truncate is complete")
 
 
+def get_api_data_count(query_url, token):
+    global avgCostTime, maxCostTime
+    headers = {
+        "Authorization": token
+    }
+    proxies = requests.utils.getproxies()
+    if proxies and 'https' in proxies:
+        proxies['https'] = proxies['http']
+    response = requests.get(query_url, headers=headers, proxies=proxies, verify=False).json()
+    return int(response)
+
+
 if __name__ == '__main__':
+    getTokenUrl = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/gettoken"
+    getDataCountUrl = "https://api15.sapsf.cn/odata/v2/PerPerson/$count"
     user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
     pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
+    requestToken = getToken(getTokenUrl, user, pwd)
+    apiDataCount = get_api_data_count(getDataCountUrl, requestToken)
+    print(f"{apiName} data count: {apiDataCount}")
     # pro api
     existing_url = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/existingstaff"
     truncate_table(tarEngine, tarExistingStaffTableNameDwd)

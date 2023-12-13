@@ -17,7 +17,7 @@ FieldsDate = ['employment_start_date_1', 'leave_start_date', 'employment_start_d
               'issued_date', 'company_service_date', 'expected_assignment_end_date_1', 'effective_date',
               'expected_assignment_end_date_0', 'compensation_effective_date', 'leave_end_date',
               'end_international_employment_date_1', 'employee_contract_effective_date',
-              'end_international_employment_date_0', 'term_date'
+              'end_international_employment_date_0', 'term_date', 'date_time_completed'
               ]
 FieldsCountry = ["home_country", "home_country_2", "host_country", "host_country_2", "working_territory_0",
                  "working_territory_1", "education_country", "nationality"]

@@ -131,7 +131,8 @@ def deal_dwd(response):
         Reference_ID = value.get("cust_l5Nav").get("cust_rid")
         Organization_Code = value["externalCode"]
         OrganizationName = value["name_en_GB"]
-        Superior_Organization = value["cust_l4"]
+        Superior_Organization = \
+            value["cust_l4Nav"]["externalName"] if value["cust_l4Nav"] is not None else None
         Superior_Organization_ID = \
             value["cust_l4Nav"]["cust_rid"] if value["cust_l4Nav"] is not None else None
         result_dataframe.loc[len(result_dataframe.index)] = [Reference_ID, OrganizationName, Organization_Code,
