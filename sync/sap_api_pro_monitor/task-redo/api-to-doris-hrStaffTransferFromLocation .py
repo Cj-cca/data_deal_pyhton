@@ -262,7 +262,8 @@ if __name__ == '__main__':
         endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%dT%H:%M:%S")
         while startTime < endTime:
             tmpStartTime = startTime
-            tmpEndTime = tmpStartTime + datetime.timedelta(days=1)
+            tmpEndTime = tmpStartTime + datetime.timedelta(days=1) if (tmpStartTime + datetime.timedelta(
+                days=1)) < endTime else endTime
             createTime = tmpEndTime
             syncApiData(user, pwd, transfer_from_location_url, start_time=tmpStartTime.strftime("%Y-%m-%dT%H:%M:%S"),
                         end_time=tmpEndTime.strftime("%Y-%m-%dT%H:%M:%S"))
