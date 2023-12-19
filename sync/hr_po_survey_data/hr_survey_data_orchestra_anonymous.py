@@ -2,6 +2,7 @@ import time
 import pandas as pd
 import queue
 import threading
+import datetime
 import concurrent.futures
 from sqlalchemy import create_engine
 from urllib.parse import quote_plus as urlquote
@@ -23,11 +24,13 @@ chunk_size = 10000  # 根据实际情况调整
 chunks = pd.read_csv(file_path, chunksize=chunk_size)
 max_queue_size = 20
 task_queue = queue.Queue(max_queue_size)
+create_date = datetime.datetime.now().date()
 start = time.time()
 
 
 def write_data(df):
     df.rename(columns=fieldMap, inplace=True)
+    df['create_date'] = create_date
     insert_count = df.to_sql(surveyDataOrchestraAnonymousTableName, tarEngine, if_exists='append', index=False)
     print(f"{surveyDataOrchestraAnonymousTableName}数据插入成功，受影响行数：", insert_count)
     return insert_count
