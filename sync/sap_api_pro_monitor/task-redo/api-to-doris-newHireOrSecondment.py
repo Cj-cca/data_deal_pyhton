@@ -275,7 +275,8 @@ def deal_dwd(response):
         format_fields_date(result_dataframe, i)
         business_process_type = result_dataframe.loc[i, "business_process_type"]
         if (business_process_type == "Hire" or business_process_type == "Rehire"
-                or business_process_type == "Add International Assignment"):
+            or business_process_type == "Add International Assignment", business_process_type
+                                                                        == "Start Contingent Worker"):
             result_dataframe.loc[i, "term_date"] = "1/1/0001 12:00:00 AM"
             result_dataframe.loc[i, "status"] = "True"
 
