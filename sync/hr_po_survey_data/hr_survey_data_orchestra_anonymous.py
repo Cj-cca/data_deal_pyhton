@@ -22,7 +22,7 @@ tarEngine = create_engine(
 file_path = 'C:/Users/Austin J Cheng/Downloads/Survey Data Orchestra Anonymous.csv'
 chunk_size = 10000  # 根据实际情况调整
 chunks = pd.read_csv(file_path, chunksize=chunk_size)
-max_queue_size = 30
+max_queue_size = 20
 task_queue = queue.Queue(max_queue_size)
 create_date = datetime.datetime.now().date()
 start = time.time()

@@ -20,7 +20,7 @@ def generate_his_sql(data_base, table_his, table_dwd, fields, unique_keys):
     """
     sql_list.append(get_delete_data_sql)
 
-    # 把新增和修改了的原始的数据更新endTIme
+    # 把修改了的原始的数据更新endTIme
     get_change_data_sql = f"""insert into `{data_base}`.`{table_his}`(start_date, {fields_str},  end_date)
 select his.start_date, {select_field},CURDATE() as end_date
 from(

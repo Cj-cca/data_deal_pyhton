@@ -45,3 +45,5 @@
 # DBName:   PwCFinanceBI
 # Account:    PwCFinanceBI_Replication
 # Password: B7ka1DcD2k9t6q9z
+
+# WorkDayStage@CNCSQLUWV5014/admin

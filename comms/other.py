@@ -116,21 +116,14 @@ def show_run_process():
         time.sleep(0.1)
 
 
-def handle_df(series):
-    for value in handleValue:
-        v = series[value]
-        series[value] = v * 5 if v > 5 else v
-    return series
+# def handle_df(series):
+#     for value in handleValue:
+#         v = series[value]
+#         series[value] = v * 5 if v > 5 else v
+#     return series
 
 
 if __name__ == '__main__':
-    # 生成随机整数值的 5x5 DataFrame
-    handleValue = [1, 2, 3]
-    df = pd.DataFrame(np.random.randint(low=0, high=10, size=(5, 5)))
-    print(df)
-    df = df.apply(handle_df, axis=1)
-    print(df)
-
     # srcFields = ["worker_id", "degree", "first_year_attended", "is_highest_level_of_education", "last_year_attended",
     #              "school_id", "school_name", "education_country", "degree_receiving_date", "field_of_study"
     #              ]
@@ -141,6 +134,24 @@ if __name__ == '__main__':
     # tableName = 'ads_hr_workers_education_day_ef'
     # sql_create(srcFields, tarFields, databases, tableName)
 
-    # notNullFieldList = "bintExchangeRateID,ExchangeRateKey,ReportingCurrencyCode,ReportingCurrency,ExchangeRate,ReportingExchangeRate,sdRowCreation"
-    # for value in notNullFieldList.split(","):
-    #     print(convert_to_snake_case_new(value))
+    notNullFieldList = """bintFactCurrentCashId,
+FiscalYearKey,
+DateKey,
+ExchangeRateKey,
+ClientKey,
+JobPeriodKey,
+CyJobOuKey,
+P1yJobOuKey,
+P2yJobOuKey,
+CurrentJobKey,
+CurrentBillKey,
+CurrentOriginalBillKey,
+BillDateKey,
+BankedDateKey,
+ReceiptDateKey,
+DebtorKey,
+JobRevenueExclusionKey,
+CashReceipt,
+sdRowCreation"""
+    for value in notNullFieldList.split(","):
+        print(convert_to_snake_case_new(value))

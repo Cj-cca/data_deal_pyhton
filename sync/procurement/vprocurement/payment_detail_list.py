@@ -41,7 +41,7 @@ fieldMapping = {"PaymentRequestNo": "payment_request_no", "PaymentURL": "payment
                 "PIC": "pic", "MIC": "mic", "ExpectedRefundDate": "expected_refund_date", "HRCode": "hr_code",
                 "LocationFrom": "location_from", "LocationTo": "location_to", "PeriodDateFrom": "period_date_from",
                 "PeriodDateTo": "period_date_to"}
-tarTableNameOds = "ods_fin_payment_detail_list_hour_ei"
+tarTableNameOds = "ods_fin_payment_detail_list_hour_ei_new"
 
 totalDataCount = 0
 totalInsertCount = 0
@@ -97,8 +97,8 @@ def run():
 
 
 if __name__ == '__main__':
-    startTimeStr = '2017-10-01'
-    endTimeStr = '2023-11-01'
+    startTimeStr = '2017-12-01'
+    endTimeStr = '2024-01-01'
     search_start = datetime.datetime.strptime(startTimeStr, "%Y-%m-%d")
     search_end = datetime.datetime.strptime(endTimeStr, "%Y-%m-%d")
     while search_start < search_end:

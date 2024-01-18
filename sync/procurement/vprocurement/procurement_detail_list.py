@@ -42,7 +42,7 @@ fieldMapping = {"ProcurementRequestNo": "procurement_request_no", "ProcurementUR
                 "LocationFrom": "location_from", "LocationTo": "location_to", "PeriodDateFrom": "period_date_from",
                 "PeriodDateTo": "period_date_to"}
 
-tarTableNameOds = "ods_fin_procurement_detail_list_hour_ei"
+tarTableNameOds = "ods_fin_procurement_detail_list_hour_ei_new"
 
 totalDataCount = 0
 totalInsertCount = 0
@@ -98,8 +98,8 @@ def run():
 
 
 if __name__ == '__main__':
-    startTimeStr = '2017-10-01'
-    endTimeStr = '2023-11-01'
+    startTimeStr = '2020-05-18'
+    endTimeStr = '2024-01-01'
     search_start = datetime.datetime.strptime(startTimeStr, "%Y-%m-%d")
     search_end = datetime.datetime.strptime(endTimeStr, "%Y-%m-%d")
     while search_start < search_end:
