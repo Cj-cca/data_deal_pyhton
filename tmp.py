@@ -11,6 +11,18 @@ data = {'ID': [1, 2, 3, 4],
 df = pd.DataFrame(data)
 change(df, 2)
 
+
+insert_fields = "a,b,c,d,e,f"
+insert_value_placeholder = ','.join(['%s' for _ in insert_fields.split(',')])
+
+prt_arr = ()
+for s in insert_fields:
+    a = prt(s)
+
 # 打印原始 DataFrame
 print("Original DataFrame:")
 print(df)
+
+
+def prt(v):
+    print(v)

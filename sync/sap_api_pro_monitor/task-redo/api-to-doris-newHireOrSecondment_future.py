@@ -304,7 +304,7 @@ def check_repeat_data(dataframe_org):
     worker_id_list = "','".join(dataframe_org['worker_id'].to_list())
     sql = text(
         f"""select {','.join(list(fieldMapping.values()))} from(
-    select hire_org.* from work_day_stage.dwd_new_hire_or_secondment_day_ef as hire_org left join
+    select hire_org.* from dwd_new_hire_or_secondment_day_ef as hire_org left join
     (select worker_id,max(date_time_completed)as date_time_completed
     from dwd_new_hire_or_secondment_day_ef group by worker_id)as hire_tar
     on hire_org.worker_id = hire_tar.worker_id and hire_org.date_time_completed = hire_tar.date_time_completed
