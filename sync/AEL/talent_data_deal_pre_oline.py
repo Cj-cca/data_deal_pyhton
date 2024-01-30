@@ -10,16 +10,14 @@ from urllib.parse import quote_plus as urlquote
 cnHolidayList = []
 hkHolidayList = []
 
-startDate = '2018-08-16'
+startDate = ''
 endDate = ''
-tmpEndTime = '2023-12-01'
-# startDate = '2018-08-16'
-# endDate = '2023-10-11'
 
 if startDate == '':
     startDate = datetime.now().date() - timedelta(days=8)
     endDate = datetime.now().date()
 
+holidayStartDate = datetime.now().date() - timedelta(days=365 * 2)
 
 fieldMapping = {'workerID': 'worker_id', 'officeCode': 'office_code', 'jobCode': 'job_code',
                 'employeeID': 'employee_id', 'jobId': 'job_id', 'countryCode': 'country_code',
@@ -36,7 +34,7 @@ def get_holiday_info(engine):
     sql = f""" 
      SELECT DATE_FORMAT(WorkDate,'%Y-%m-%d') AS WorkDate,CountryCode
      FROM LMS.Calendar 
-     WHERE DateStatus IN ('H','S')
+     WHERE WorkDate >= \'{holidayStartDate}\' AND DateStatus IN ('H','S')
      """
     result = pd.read_sql(text(sql), engine.connect())
     for index, row in result.iterrows():
@@ -205,7 +203,7 @@ def truncateTable(engine, table_name):
     print("table truncate is complete")
 
 
-def run():
+if __name__ == '__main__':
     sqlserverEngine = create_engine("mssql+pymssql://TL_ADV_Reader:%s@CNSHADBSPWV001:1433/TalentLinkDBAdv" \
                                     % (urllib.parse.quote_plus('Ac1a7k0wG4bD')))
     dorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
@@ -216,18 +214,12 @@ def run():
     # 以json的形式写入文本中
     # map_write_to_json(result)
     # 写入数据库中
-    tableName = "ods_advisory_talent_link_newest"
+    tableName = "ods_advisory_talent_link"
     df = pd.DataFrame(result_data)
     df.rename(columns=fieldMapping, inplace=True)
     result_count = df.to_sql(tableName, tarDorisEngine, if_exists='append', index=False)
     print(f"数据写入成功，数据条数：{len(result_data)}。写入数据条数：{result_count}")
-
-
-if __name__ == '__main__':
-    startDate = datetime.strptime(startDate, "%Y-%m-%d")
-    tmpEndTime = datetime.strptime(tmpEndTime, "%Y-%m-%d")
-    endDate = startDate
-    while startDate < tmpEndTime:
-        endDate = startDate + timedelta(days=30)
-        run()
-        startDate = endDate
+    if len(delay_data) > 0:
+        print("delta date exceed 2 day: ")
+        for key in delay_data:
+            print(f"{key}: {delay_data[key]}")

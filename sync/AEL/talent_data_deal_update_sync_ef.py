@@ -1,25 +1,29 @@
 import pandas as pd
-import pyodbc
+import time
 import urllib
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from datetime import datetime, timedelta
 import json
+import queue
+import threading
+import concurrent.futures
 from urllib.parse import quote_plus as urlquote
 
 cnHolidayList = []
 hkHolidayList = []
 
-startDate = '2023-12-01'
-endDate = ''
-tmpEndTime = '2024-02-01'
+
+startDate = '2018-08-16'
+endDate = '2024-02-01'
+# startDate = '2018-08-16'
+# endDate = '2023-10-11'
 
 if startDate == '':
     startDate = datetime.now().date() - timedelta(days=8)
     endDate = datetime.now().date()
 
-
-fieldMapping = {'bookingID': 'booking_id', 'workerID': 'worker_id', 'officeCode': 'office_code', 'jobCode': 'job_code',
+fieldMapping = {'bookingID': 'booking_id','workerID': 'worker_id', 'officeCode': 'office_code', 'jobCode': 'job_code',
                 'employeeID': 'employee_id', 'jobId': 'job_id', 'countryCode': 'country_code',
                 'StaffName': 'staff_name', 'JobTitle': 'job_title', 'TermFlag': 'term_flag',
                 'clientCode': 'client_code', 'staffID': 'staff_id', 'holidayFlag': 'holiday_flag',
@@ -27,14 +31,15 @@ fieldMapping = {'bookingID': 'booking_id', 'workerID': 'worker_id', 'officeCode'
                 'createByDate': 'create_by_date'}
 
 delay_data = {}
+staff_id_map = {}
 
 
 def get_holiday_info(engine):
     sql = f""" 
-         SELECT DATE_FORMAT(WorkDate,'%Y-%m-%d') AS WorkDate,CountryCode
-         FROM LMS.Calendar 
-         WHERE DateStatus IN ('H','S')
-         """
+     SELECT DATE_FORMAT(WorkDate,'%Y-%m-%d') AS WorkDate,CountryCode
+     FROM LMS.Calendar 
+     WHERE DateStatus IN ('H','S')
+     """
     result = pd.read_sql(text(sql), engine.connect())
     for index, row in result.iterrows():
         if 'CN' == row['CountryCode']:
@@ -43,7 +48,20 @@ def get_holiday_info(engine):
             hkHolidayList.append(row['WorkDate'])
 
 
-def set_staff_info(row, staff_id_map):
+def get_staff_info(doris_engine):
+    doris_connect = doris_engine.connect()
+    sql = f"""select CountryCode,StaffID,TermDate,StaffName,JobTitle,TermFlag from StaffBank.StaffBank"""
+    staff_bank_result = pd.read_sql(text(sql), doris_connect)
+    for index, row in staff_bank_result.iterrows():
+        if row["TermDate"] is not None:
+            staff_id_map[row["StaffID"]] = [row["CountryCode"], row["TermDate"].strftime("%Y-%m-%d").split("T")[0],
+                                            row["StaffName"], row["JobTitle"], row["TermFlag"]]
+        else:
+            staff_id_map[row["StaffID"]] = [row["CountryCode"], '1999-01-01', row["StaffName"], row["JobTitle"],
+                                            row["TermFlag"]]
+
+
+def set_staff_info(row):
     sf_id = row["staffID"]
     ct_code = row["countryCode"]
     staff_name = ""
@@ -85,8 +103,7 @@ def set_staff_info(row, staff_id_map):
     return term_date
 
 
-def get_talent_link(sqlserver_engine, doris_engine):
-    doris_connect = doris_engine.connect()
+def get_talent_link(start, end, sqlserver_engine):
     sql = f""" 
     SELECT 
     BookingID AS bookingID,
@@ -103,26 +120,54 @@ def get_talent_link(sqlserver_engine, doris_engine):
     OfficeCode AS officeCode,
     WorkerID AS workerID,
     StaffID AS  staffID,
+    JOB_ID_DESCR AS  jobIdDesc,
+    RES_ID AS  resID,
+    concat(StartDate,' - ',EndDate) AS dateRange,
     UpdateDate AS  updateDate,
     CreateByDate AS  createByDate
     FROM dbo.tblTalentLinkOrignal
     where 
-    CreateByDate >= \'{startDate}\' AND CreateByDate < \'{endDate}\' AND GHOST='C'
+    CreateByDate >= \'{start}\' AND CreateByDate < \'{end}\' AND GHOST='C'
     """
     talent_link_result = pd.read_sql(text(sql), sqlserver_engine.connect())
+    return talent_link_result
+
+
+def map_write_to_json(map_data):
+    json_str = json.dumps(map_data)
+    # 将JSON字符串写入文件
+    with open("./data.json", "w") as file:
+        file.write(json_str)
+
+
+def truncateTable(engine, table_name):
+    tarConn = engine.connect()
+    tarConn.execute(text(f"truncate table {table_name}"))
+    tarConn.close()
+    print("table truncate is complete")
+
+
+def task_producer(tq):
+    # 在这里生成任务并放入队列
+    start_date = datetime.strptime(startDate, "%Y-%m-%d")
+    end_date = datetime.strptime(endDate, "%Y-%m-%d")
+    sqlserver_engine = create_engine("mssql+pymssql://TL_ADV_Reader:%s@CNSHADBSPWV001:1433/TalentLinkDBAdv" \
+                                     % (urllib.parse.quote_plus('Ac1a7k0wG4bD')))
+    while start_date < end_date:
+        tmp_end_date = start_date + timedelta(days=30)
+        print(f"{start_date}<->{tmp_end_date}: 获取当前时间段数据开始！！！")
+        result_data = get_talent_link(start_date, tmp_end_date, sqlserver_engine)
+        tq.put(result_data)
+        print(f"{start_date}<->{tmp_end_date}: 获取当前时间段数据完成！！！，数据长度：{len(result_data)}")
+        start_date = tmp_end_date
+
+
+def write_data(talent_link_result):
+    print("开始处理原始数据")
+    old_doris_engine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
+    doris_connect = old_doris_engine.connect()
     result = []
     if talent_link_result.size > 0:
-        sql = f"""select CountryCode,StaffID,TermDate,StaffName,JobTitle,TermFlag from StaffBank.StaffBank"""
-        staff_bank_result = pd.read_sql(text(sql), doris_connect)
-        staff_id_map = {}
-        for index, row in staff_bank_result.iterrows():
-            if row["TermDate"] is not None:
-                staff_id_map[row["StaffID"]] = [row["CountryCode"], row["TermDate"].strftime("%Y-%m-%d").split("T")[0],
-                                                row["StaffName"], row["JobTitle"], row["TermFlag"]]
-            else:
-                staff_id_map[row["StaffID"]] = [row["CountryCode"], '1999-01-01', row["StaffName"], row["JobTitle"],
-                                                row["TermFlag"]]
-
         for index, row in talent_link_result.iterrows():
             update_date = row["updateDate"]
             create_by_date = row["createByDate"]
@@ -132,7 +177,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
                     delay_data[delta_day].append(row['staffID'])
                 else:
                     delay_data[delta_day] = [row['staffID']]
-            term_date = set_staff_info(row, staff_id_map)
+            term_date = set_staff_info(row)
 
             if term_date == "":
                 # staffBank中没有这个staffID,则需要先去staffIDList里面查询staffID，然后在到staffBank里面查询
@@ -142,7 +187,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
                 if staff_id_list_result.size > 0:
                     sf_id = staff_id_list_result.iloc[0]["StaffID"]
                     row["staffID"] = sf_id
-                    term_date = set_staff_info(row, staff_id_map)
+                    term_date = set_staff_info(row)
                     if term_date == "":
                         print(f"StaffBank.StaffBank没有该staff_id: {sf_id}")
                 else:
@@ -182,46 +227,37 @@ def get_talent_link(sqlserver_engine, doris_engine):
                 start_date_tmp += timedelta(days=1)
                 start_date_str = start_date_tmp.strftime("%Y-%m-%d")
         doris_connect.close()
-    return result
-
-
-def map_write_to_json(map_data):
-    json_str = json.dumps(map_data)
-    # 将JSON字符串写入文件
-    with open("./data.json", "w") as file:
-        file.write(json_str)
-
-
-def truncateTable(engine, table_name):
-    tarConn = engine.connect()
-    tarConn.execute(text(f"truncate table {table_name}"))
-    tarConn.close()
-    print("table truncate is complete")
-
-
-def run():
-    sqlserverEngine = create_engine("mssql+pymssql://TL_ADV_Reader:%s@CNSHADBSPWV001:1433/TalentLinkDBAdv" \
-                                    % (urllib.parse.quote_plus('Ac1a7k0wG4bD')))
-    dorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
-    tarDorisEngine = create_engine(
-        f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
-    get_holiday_info(dorisEngine)
-    result_data = get_talent_link(sqlserverEngine, dorisEngine)
-    # 以json的形式写入文本中
-    # map_write_to_json(result)
-    # 写入数据库中
+    tar_doris_engine = create_engine(
+        f"mysql+pymysql://root@10.158.16.244:9030/AEL")
     tableName = "ods_advisory_talent_link_key_new"
-    df = pd.DataFrame(result_data)
+    df = pd.DataFrame(result)
     df.rename(columns=fieldMapping, inplace=True)
-    result_count = df.to_sql(tableName, tarDorisEngine, if_exists='append', index=False)
-    print(f"数据写入成功，数据条数：{len(result_data)}。写入数据条数：{result_count}")
+    try:
+        result_count = df.to_sql(tableName, tar_doris_engine, if_exists='append', index=False)
+        print(f"数据写入成功，数据条数：{len(result)}。写入数据条数：{result_count}")
+    except Exception as e:
+        print(e)
 
 
 if __name__ == '__main__':
-    startDate = datetime.strptime(startDate, "%Y-%m-%d")
-    tmpEndTime = datetime.strptime(tmpEndTime, "%Y-%m-%d")
-    endDate = startDate
-    while startDate < tmpEndTime:
-        endDate = startDate + timedelta(days=30)
-        run()
-        startDate = endDate
+    #有问题，还不能投入使用
+    oldDorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
+    get_holiday_info(oldDorisEngine)
+    get_staff_info(oldDorisEngine)
+    max_queue_size = 20
+    taskQueue = queue.Queue(max_queue_size)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as t:
+        # 启动任务生产者线程
+        producer_thread = threading.Thread(target=task_producer, args=(taskQueue,))
+        producer_thread.start()
+        time.sleep(5)
+        while True:
+            try:
+                resultData = taskQueue.get(timeout=5)  # 设置超时以便在队列为空时跳出循环
+                t.submit(write_data)
+            except queue.Empty:
+                break
+    # 主线程等待线程池中的任务执行完成
+    t.shutdown(wait=True)
+    # 主线程等待生产者线程执行完
+    producer_thread.join()

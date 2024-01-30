@@ -151,7 +151,7 @@ NewHireOrSecondmentTableNameOds = "ods_new_hire_or_secondment_future_day_ei"
 NewHireOrSecondmentTableNameOdsDetail = "ods_new_hire_or_secondment_future_detail_day_ei"
 
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage_test"
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage"
 )
 batchID = 0
 createTime = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -358,7 +358,7 @@ def api_field_check(dataframe, field_exception_type):
 
 
 if __name__ == '__main__':
-    user = "sb-a8531244-374b-414c-8944-0dbdf941c2e5!b1813|it-rt-pwc-dev!b39"
-    pwd = "f4aee3e5-9539-4568-be98-404a5c6ca253$yxW2FNy_fKA8a1Fjn44SM3zjSt4VGvIbzu9tQnHfWdg="
-    new_hire_secondment_url = "https://pwc-dev.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/newhire-or-secondment/future"
+    user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
+    pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
+    new_hire_secondment_url = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/newhire-or-secondment/future"
     syncApiData(user, pwd, new_hire_secondment_url)
