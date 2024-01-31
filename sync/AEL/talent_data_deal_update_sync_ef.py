@@ -13,7 +13,6 @@ from urllib.parse import quote_plus as urlquote
 cnHolidayList = []
 hkHolidayList = []
 
-
 startDate = '2018-08-16'
 endDate = '2024-02-01'
 # startDate = '2018-08-16'
@@ -23,7 +22,7 @@ if startDate == '':
     startDate = datetime.now().date() - timedelta(days=8)
     endDate = datetime.now().date()
 
-fieldMapping = {'bookingID': 'booking_id','workerID': 'worker_id', 'officeCode': 'office_code', 'jobCode': 'job_code',
+fieldMapping = {'bookingID': 'booking_id', 'workerID': 'worker_id', 'officeCode': 'office_code', 'jobCode': 'job_code',
                 'employeeID': 'employee_id', 'jobId': 'job_id', 'countryCode': 'country_code',
                 'StaffName': 'staff_name', 'JobTitle': 'job_title', 'TermFlag': 'term_flag',
                 'clientCode': 'client_code', 'staffID': 'staff_id', 'holidayFlag': 'holiday_flag',
@@ -129,7 +128,9 @@ def get_talent_link(start, end, sqlserver_engine):
     where 
     CreateByDate >= \'{start}\' AND CreateByDate < \'{end}\' AND GHOST='C'
     """
-    talent_link_result = pd.read_sql(text(sql), sqlserver_engine.connect())
+    sqlserver_conn = sqlserver_engine.connect()
+    talent_link_result = pd.read_sql(text(sql), sqlserver_conn)
+    sqlserver_conn.close()
     return talent_link_result
 
 
@@ -156,10 +157,13 @@ def task_producer(tq):
     while start_date < end_date:
         tmp_end_date = start_date + timedelta(days=30)
         print(f"{start_date}<->{tmp_end_date}: 获取当前时间段数据开始！！！")
-        result_data = get_talent_link(start_date, tmp_end_date, sqlserver_engine)
-        tq.put(result_data)
-        print(f"{start_date}<->{tmp_end_date}: 获取当前时间段数据完成！！！，数据长度：{len(result_data)}")
-        start_date = tmp_end_date
+        try:
+            result_data = get_talent_link(start_date, tmp_end_date, sqlserver_engine)
+            tq.put(result_data)
+            print(f"{start_date}<->{tmp_end_date}: 获取当前时间段数据完成！！！，数据长度：{len(result_data)}")
+            start_date = tmp_end_date
+        except Exception as e:
+            print(f"获取原始数据发生异常：{e}")
 
 
 def write_data(talent_link_result):
@@ -240,7 +244,7 @@ def write_data(talent_link_result):
 
 
 if __name__ == '__main__':
-    #有问题，还不能投入使用
+    # 问题解决，可以投入使用
     oldDorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
     get_holiday_info(oldDorisEngine)
     get_staff_info(oldDorisEngine)
@@ -250,13 +254,15 @@ if __name__ == '__main__':
         # 启动任务生产者线程
         producer_thread = threading.Thread(target=task_producer, args=(taskQueue,))
         producer_thread.start()
-        time.sleep(5)
+        time.sleep(10)
         while True:
             try:
-                resultData = taskQueue.get(timeout=5)  # 设置超时以便在队列为空时跳出循环
-                t.submit(write_data)
+                resultData = taskQueue.get(timeout=60)  # 设置超时以便在队列为空时跳出循环
+                t.submit(write_data, resultData)
             except queue.Empty:
+                print("队列没有可获取的数据")
                 break
+    print("等待子线程任务执行完成！")
     # 主线程等待线程池中的任务执行完成
     t.shutdown(wait=True)
     # 主线程等待生产者线程执行完
