@@ -27,6 +27,7 @@ fieldMapping = {'bookingID': 'booking_id', 'workerID': 'worker_id', 'officeCode'
                 'StaffName': 'staff_name', 'JobTitle': 'job_title', 'TermFlag': 'term_flag',
                 'clientCode': 'client_code', 'staffID': 'staff_id', 'holidayFlag': 'holiday_flag',
                 'workHours': 'work_hours', 'loading': 'loading', 'startDate': 'start_date', 'endDate': 'end_date',
+                'resID': 'res_id', 'jobIdDesc': 'job_id_desc', 'dateRange': 'date_range',
                 'createByDate': 'create_by_date'}
 
 delay_data = {}
@@ -134,13 +135,6 @@ def get_talent_link(start, end, sqlserver_engine):
     return talent_link_result
 
 
-def map_write_to_json(map_data):
-    json_str = json.dumps(map_data)
-    # 将JSON字符串写入文件
-    with open("./data.json", "w") as file:
-        file.write(json_str)
-
-
 def truncateTable(engine, table_name):
     tarConn = engine.connect()
     tarConn.execute(text(f"truncate table {table_name}"))
@@ -205,6 +199,7 @@ def write_data(talent_link_result):
                     "jobCode": row["jobCode"], "employeeID": row["employeeID"], "jobId": row["jobId"],
                     "countryCode": row["countryCode"], "clientCode": row["clientCode"], "staffID": row["staffID"],
                     "StaffName": row["StaffName"], "JobTitle": row["JobTitle"], "TermFlag": row["TermFlag"],
+                    "resID": row["resID"], "jobIdDesc": row["jobIdDesc"], "dateRange": row["dateRange"],
                     "createByDate": row["createByDate"]}
 
             start_date_str = row["startDate"].strftime("%Y-%m-%d")

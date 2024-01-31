@@ -10,20 +10,21 @@ from urllib.parse import quote_plus as urlquote
 cnHolidayList = []
 hkHolidayList = []
 
-startDate = '2023-12-01'
+startDate = ''
 endDate = ''
-tmpEndTime = '2024-02-01'
 
 if startDate == '':
     startDate = datetime.now().date() - timedelta(days=8)
     endDate = datetime.now().date()
 
+holidayStartDate = datetime.now().date() - timedelta(days=365 * 2)
 
 fieldMapping = {'bookingID': 'booking_id', 'workerID': 'worker_id', 'officeCode': 'office_code', 'jobCode': 'job_code',
                 'employeeID': 'employee_id', 'jobId': 'job_id', 'countryCode': 'country_code',
                 'StaffName': 'staff_name', 'JobTitle': 'job_title', 'TermFlag': 'term_flag',
                 'clientCode': 'client_code', 'staffID': 'staff_id', 'holidayFlag': 'holiday_flag',
                 'workHours': 'work_hours', 'loading': 'loading', 'startDate': 'start_date', 'endDate': 'end_date',
+                'resID': 'res_id', 'jobIdDesc': 'job_id_desc', 'dateRange': 'date_range',
                 'createByDate': 'create_by_date'}
 
 delay_data = {}
@@ -31,10 +32,10 @@ delay_data = {}
 
 def get_holiday_info(engine):
     sql = f""" 
-         SELECT DATE_FORMAT(WorkDate,'%Y-%m-%d') AS WorkDate,CountryCode
-         FROM LMS.Calendar 
-         WHERE DateStatus IN ('H','S')
-         """
+     SELECT DATE_FORMAT(WorkDate,'%Y-%m-%d') AS WorkDate,CountryCode
+     FROM LMS.Calendar 
+     WHERE WorkDate >= \'{holidayStartDate}\' AND DateStatus IN ('H','S')
+     """
     result = pd.read_sql(text(sql), engine.connect())
     for index, row in result.iterrows():
         if 'CN' == row['CountryCode']:
@@ -103,6 +104,9 @@ def get_talent_link(sqlserver_engine, doris_engine):
     OfficeCode AS officeCode,
     WorkerID AS workerID,
     StaffID AS  staffID,
+    JOB_ID_DESCR AS  jobIdDesc,
+    RES_ID AS  resID,
+    concat(StartDate,' - ',EndDate) AS dateRange,
     UpdateDate AS  updateDate,
     CreateByDate AS  createByDate
     FROM dbo.tblTalentLinkOrignal
@@ -156,6 +160,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
                     "jobCode": row["jobCode"], "employeeID": row["employeeID"], "jobId": row["jobId"],
                     "countryCode": row["countryCode"], "clientCode": row["clientCode"], "staffID": row["staffID"],
                     "StaffName": row["StaffName"], "JobTitle": row["JobTitle"], "TermFlag": row["TermFlag"],
+                    "resID": row["resID"], "jobIdDesc": row["jobIdDesc"], "dateRange": row["dateRange"],
                     "createByDate": row["createByDate"]}
 
             start_date_str = row["startDate"].strftime("%Y-%m-%d")
@@ -199,7 +204,7 @@ def truncateTable(engine, table_name):
     print("table truncate is complete")
 
 
-def run():
+if __name__ == '__main__':
     sqlserverEngine = create_engine("mssql+pymssql://TL_ADV_Reader:%s@CNSHADBSPWV001:1433/TalentLinkDBAdv" \
                                     % (urllib.parse.quote_plus('Ac1a7k0wG4bD')))
     dorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
@@ -210,18 +215,12 @@ def run():
     # 以json的形式写入文本中
     # map_write_to_json(result)
     # 写入数据库中
-    tableName = "ods_advisory_talent_link_key_new"
+    tableName = "ods_advisory_talent_link_update_field_and_key"
     df = pd.DataFrame(result_data)
     df.rename(columns=fieldMapping, inplace=True)
     result_count = df.to_sql(tableName, tarDorisEngine, if_exists='append', index=False)
     print(f"数据写入成功，数据条数：{len(result_data)}。写入数据条数：{result_count}")
-
-
-if __name__ == '__main__':
-    startDate = datetime.strptime(startDate, "%Y-%m-%d")
-    tmpEndTime = datetime.strptime(tmpEndTime, "%Y-%m-%d")
-    endDate = startDate
-    while startDate < tmpEndTime:
-        endDate = startDate + timedelta(days=30)
-        run()
-        startDate = endDate
+    if len(delay_data) > 0:
+        print("delta date exceed 2 day: ")
+        for key in delay_data:
+            print(f"{key}: {delay_data[key]}")
