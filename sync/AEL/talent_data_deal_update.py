@@ -199,16 +199,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
                 work_hour = calculate_hour(start_date_time, end_date_time)
                 add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
         doris_connect.close()
-    tar_doris_engine = create_engine(
-        f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
-    table_name = "ods_advisory_talent_link_update_field_and_key_tmp"
-    df_result = pd.DataFrame(result)
-    df.rename(columns=fieldMapping, inplace=True)
-    try:
-        result_inset_count = df_result.to_sql(table_name, tar_doris_engine, if_exists='append', index=False)
-        print(f"数据写入成功，数据条数：{len(result)}。写入数据条数：{result_inset_count}")
-    except Exception as e:
-        print(e)
+    return result
 
 
 # 9：00 - 12：00 工作时间
@@ -281,9 +272,6 @@ if __name__ == '__main__':
         f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
     get_holiday_info(dorisEngine)
     result_data = get_talent_link(sqlserverEngine, dorisEngine)
-    # 以json的形式写入文本中
-    # map_write_to_json(result)
-    # 写入数据库中
     tableName = "ods_advisory_talent_link_update_field_and_key"
     df = pd.DataFrame(result_data)
     df.rename(columns=fieldMapping, inplace=True)
