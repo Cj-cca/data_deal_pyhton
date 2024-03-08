@@ -2,16 +2,15 @@ import time
 
 import pandas as pd
 import queue
-import os
 import datetime
-from multiprocessing import SimpleQueue
 from sqlalchemy import create_engine
 from sqlalchemy import text
 import urllib
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 import pymysql
 import pymssql
 import re
+import json
 
 # if __name__ == '__main__':
 #     map = {}
@@ -30,6 +29,7 @@ import re
 #     personalProfile = f'my name is {map["source"]["age"]}, i am {map["source"]["year"]} years old, i am height is { map["source"]["height"]} and weight is { map["source"]["weight"]}'
 #     print(personalProfile)
 from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects.mssql import json
 
 
 class DorisConnection:
@@ -249,13 +249,95 @@ def handle_series(x):
     return x
 
 
-def a():
-    x = (6241.5 + 6241.5*1.5)/2*15*0.01
+def map_write_to_json(map_data):
+    json_str = json.dumps(map_data)
+    # 将JSON字符串写入文件
+    with open("./data.json", "w") as file:
+        file.write(json_str)
+
+
+def truncateTable(engine, table_name):
+    tarConn = engine.connect()
+    tarConn.execute(text(f"truncate table {table_name}"))
+    tarConn.close()
+    print("table truncate is complete")
+
+
+def time_str_to_int(ts):
+    time_str = ts
+    hour, minute = map(int, time_str.split(':'))
+    return hour + minute / 60
+
+
+def calculate_hour(sd, ed, sh_ts, eh_ts):
+    start_date = sd
+    end_date = ed
+    start_hour = time_str_to_int(sh_ts)
+    end_hour = time_str_to_int(eh_ts)
+    hour = 0
+    if start_date == end_date:
+        if start_hour < 9:
+            start_hour = 9
+            if end_hour <= 12:
+                hour = end_hour - start_hour
+            elif 12 < end_hour < 12.5:
+                hour = 12 - start_hour
+            else:
+                hour = end_hour - start_hour - 0.5
+        elif 9 <= start_hour <= 12:
+            if end_hour <= 12:
+                hour = end_hour - start_hour
+            elif 12 < end_hour < 12.5:
+                hour = 12 - start_hour
+            else:
+                hour = end_hour - start_hour - 0.5
+        elif 12 < start_hour <= 12.5:
+            start_hour = 12.5
+            hour = end_hour - start_hour
+        else:
+            hour = end_hour - start_hour
+    return hour
+
+
+def cal_work_hour():
+    day_hour_list = []
+    datetime_str_start = "2023-05-15 08:30:00"
+    datetime_str_end = "2023-05-15 08:30:00"
+    start_datetime = datetime.datetime.strptime(datetime_str_start, "%Y-%m-%d %H:%M:%S")
+    end_datetime = datetime.datetime.strptime(datetime_str_end, "%Y-%m-%d %H:%M:%S")
+    start_date = datetime.datetime(2022, 6, 15)
+    end_date = datetime.datetime(2022, 6, 16)
+
+    # 计算日期差
+    date_diff = abs(start_date - end_date)
+
+    # 判断日期差是否大于一天
+    if date_diff.days > 1:
+        print("日期差大于一天")
+        start_date = start_date + datetime.timedelta(days=1)
+        end_date = end_date - datetime.timedelta(days=1)
+
+    elif date_diff.days == 1:
+        print("日期差等于一天")
+    else:
+        print("都是当天")
+
+
+def update_proxy():
+    # 修改代理环境变量,需要重启pycharm才能生效
+    import os
+    os.putenv("http_proxy", "http://127.0.0.1:54450")
+    os.putenv("https_proxy", "http://127.0.0.1:54450")
+    print(os.environ)
+
+
+def update_map(list_input):
+    list_input = 1
+    return list_input
 
 
 if __name__ == '__main__':
-    dit = {"A": {"a": "str"}}
-
+    pass
     # execSql = f"show create table aaa"
     # orgCursor = DorisConnection.getCursor(host="CNCSQLPWV5027", user="M·iddlePlatform", password="!QAZ@WSX#edc", port=1800, database=dataBase)
     # tarCursor = DorisConnection.getCursor(host="10.158.16.244", user="root", password="", database="security")

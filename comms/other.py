@@ -124,34 +124,26 @@ def show_run_process():
 
 
 if __name__ == '__main__':
-    # srcFields = ["worker_id", "degree", "first_year_attended", "is_highest_level_of_education", "last_year_attended",
-    #              "school_id", "school_name", "education_country", "degree_receiving_date", "field_of_study"
-    #              ]
-    # tarFields = ["Worker_ID", "School_Name", "Field_Of_Study", "First_Year_Attended", "Last_Year_Attended", "Degree",
-    #              "Degree_Receiving_Date", "Is_Highest_Level_of_Education", "Education_Country", "School_ID"
-    #              ]
-    # databases = 'work_day_stage'
-    # tableName = 'ads_hr_workers_education_day_ef'
-    # sql_create(srcFields, tarFields, databases, tableName)
+    srcFields = ["intCustomFieldValueID",
+                 "chRegionCode",
+                 "intCustomFieldID",
+                 "nvcCode",
+                 "nvcValue",
+                 "intSortOrder",
+                 "btIsDefaultValue",
+                 "daTerminationDate"]
+    tarFields = ["int_custom_field_value_id",
+                 "ch_region_code",
+                 "int_custom_field_id",
+                 "nvc_code",
+                 "nvc_value",
+                 "int_sort_order",
+                 "bt_is_default_value",
+                 "da_termination_date"]
+    databases = 'PwCMDM.Core'
+    tableName = 'tblCustomFieldValue'
+    sql_create(srcFields, tarFields, databases, tableName)
 
-    notNullFieldList = """bintFactCurrentCashId,
-FiscalYearKey,
-DateKey,
-ExchangeRateKey,
-ClientKey,
-JobPeriodKey,
-CyJobOuKey,
-P1yJobOuKey,
-P2yJobOuKey,
-CurrentJobKey,
-CurrentBillKey,
-CurrentOriginalBillKey,
-BillDateKey,
-BankedDateKey,
-ReceiptDateKey,
-DebtorKey,
-JobRevenueExclusionKey,
-CashReceipt,
-sdRowCreation"""
-    for value in notNullFieldList.split(","):
-        print(convert_to_snake_case_new(value))
+    # notNullFieldList = """intCustomFieldValueID, chRegionCode, intCustomFieldID, nvcCode, nvcValue, intSortOrder, btIsDefaultValue, daTerminationDate"""
+    # for value in notNullFieldList.split(","):
+    #     print(convert_to_snake_case_new(value))

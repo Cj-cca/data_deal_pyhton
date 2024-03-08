@@ -53,7 +53,7 @@ TerminationAndTransferTableNameOds = "ods_termination_and_transfer_day_ei"
 TerminationAndTransferTableNameOdsDetail = "ods_termination_and_transfer_detail_day_ei"
 
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage_test"
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage"
 )
 batchID = 0
 createTime = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -131,11 +131,11 @@ def format_date(date):
     if date == '' or date == 'null':
         return result
     if len(date) > 18:
-        date_obj = datetime.datetime.fromisoformat(date)
+        date_obj = datetime.datetime.fromisoformat(date) + datetime.timedelta(hours=8)
         result = date_obj.strftime('%m/%d/%Y %I:%M:%S %p')
     elif len(date) == 4:
         date = f"{date}-01-01T12:00:00.000"
-        date_obj = datetime.datetime.fromisoformat(date)
+        date_obj = datetime.datetime.fromisoformat(date) + datetime.timedelta(hours=8)
         result = date_obj.strftime('%m/%d/%Y %I:%M:%S %p')
     else:
         print("Exception: unknown date format")
@@ -248,8 +248,8 @@ def truncateTable(engine, table_name):
 
 
 if __name__ == '__main__':
-    startTimeStr = ''
-    endTimeStr = ''
+    startTimeStr = '2024-02-23T17:30:00'
+    endTimeStr = '2024-02-24T17:30:00'
     # user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
     # pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
     user = "sb-a8531244-374b-414c-8944-0dbdf941c2e5!b1813|it-rt-pwc-dev!b39"

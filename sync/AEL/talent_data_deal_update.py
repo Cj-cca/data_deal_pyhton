@@ -101,7 +101,6 @@ def get_talent_link(sqlserver_engine, doris_engine):
     ClientName AS clientName, 
     JobCode AS jobCode , 
     CAST(LOADING AS decimal(6, 2)) AS loading,
-    CAST(LOADING AS decimal(6, 2))*0.08 AS workHours ,
     JobID AS jobId, 
     OfficeCode AS officeCode,
     WorkerID AS workerID,

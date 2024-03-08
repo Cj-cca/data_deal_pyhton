@@ -175,7 +175,7 @@ tarExistingStaffTableNameOds = "ods_existing_staff_day_ei"
 tarExistingStaffTableNameOdsDetail = "ods_existing_staff_detail_day_ei"
 
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage"
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage_test"
 )
 batchID = 0
 avgCostTime = 0
@@ -183,8 +183,8 @@ maxCostTime = 0
 createTime = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def getToken(url, user, pwd):
-    credentials = f"{user}:{pwd}"
+def getToken(url, user_name, password):
+    credentials = f"{user_name}:{password}"
     encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
     auth = f"Basic {encoded_credentials}"
     headers = {
@@ -405,15 +405,27 @@ def get_api_data_count(query_url, token):
 
 
 if __name__ == '__main__':
-    getTokenUrl = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/gettoken"
+    # pro
+    # getTokenUrl = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/gettoken"
+    # dev
+    getTokenUrl = "https://pwc-dev.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vProfile/gettoken"
     getDataCountUrl = "https://api15.sapsf.cn/odata/v2/PerPerson/$count"
-    user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
-    pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
-    requestToken = getToken(getTokenUrl, user, pwd)
+
+    # pro
+    # user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
+    # pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
+
+    # dev
+    user = "sb-a8531244-374b-414c-8944-0dbdf941c2e5!b1813|it-rt-pwc-dev!b39"
+    pwd = "f4aee3e5-9539-4568-be98-404a5c6ca253$yxW2FNy_fKA8a1Fjn44SM3zjSt4VGvIbzu9tQnHfWdg="
+    # requestToken = getToken(getTokenUrl, user, pwd)
+    requestToken = "Bearer eyJ0b2tlbkNvbnRlbnQiOnsiYXBpS2V5IjoiWmpFM09UUTVZell5T1RaaVpUTTBNR016WVdaallUQXdZalpoTVEiLCJzZlByaW5jaXBsZSI6IlB3Q192UHJvZmlsZSNESVYjcHJpY2V3YXQwNUQiLCJpc3N1ZWRGb3IiOiJwcmljZXdhdDA1RCIsInNjb3BlIjoiIiwiaXNzdWVkQXQiOjE3MDkyNzUwNDA5ODksImV4cGlyZXNBdCI6MTcwOTM2MTQ0MDk4OX0sInNpZ25hdHVyZSI6IllHVVowMDBFYVh4dXY3Z2xuZDU5eGY2MWk1WDkzQjhFYWVsTDVWbTk1Tmw5aXpzMkErZGNhNFd5eUQ5dkwwZU1QWnNxejRRbTV2Q3A3UHAvVlpBOGlCMXJoYUxCcjJYcTFyblNzRmtWTDgyYXYrRDFIeU84b0I3dkVKRnk0N201M3oxcXlkZGxjVlJMMXBGcGhQaFVyQ2RUcGYwaVhkSjJ0TXM5bVM2VkJMOD0ifQ=="
     apiDataCount = get_api_data_count(getDataCountUrl, requestToken)
     print(f"{apiName} data count: {apiDataCount}")
     # pro api
-    existing_url = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/existingstaff"
+    # existing_url = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/existingstaff"
+    # dev
+    existing_url = "https://pwc-dev.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/existingstaff"
     truncate_table(tarEngine, tarExistingStaffTableNameDwd)
     syncApiData(user, pwd, existing_url)
     print(f"data sync complete, max cost time is {maxCostTime}, avg cost time is {avgCostTime}")

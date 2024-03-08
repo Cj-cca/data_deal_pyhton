@@ -6,9 +6,6 @@ from datetime import datetime, timedelta
 import pymysql
 import urllib
 
-fields = ['staff_id', 'job_id', 'employee_id', 'start_date', 'country_code', 'worker_id', 'office_code', 'job_code',
-          'client_code', 'holiday_flag', 'work_hours', 'loading', 'end_date', 'term_flag', 'staff_name', 'job_title']
-
 
 def run_new(sql, src_engine_conn, inset_fields):
     print("开始创建连接")
@@ -22,31 +19,41 @@ def run_new(sql, src_engine_conn, inset_fields):
     print("连接创建完成")
     df = pd.read_sql(sql, src_engine_conn)
     print("数据读取成功，开始同步数据")
-    for index, row in df.iterrows():
-        try:
-            query = f"INSERT INTO AEL.ODS_ADVISORY_TALENT_LINK ({inset_fields}) VALUES (%s,%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s, %s)"
-            values = (row['staff_id'], row['job_id'], row['employee_id'], row['start_date'], row['country_code'],
-                      row['worker_id'], row['office_code'], row['job_code'], row['client_code'], row['holiday_flag'],
-                      row['work_hours'], row['loading'], row['end_date'], row['term_flag'], row['staff_name'],
-                      row['job_title'])
+    try:
+        for index, row in df.iterrows():
+            query = f"""
+            INSERT INTO AEL.ODS_ADVISORY_TALENT_LINK ({inset_fields}) 
+            VALUES (%s,%s,%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s, %s,%s, %s, %s) 
+            ON DUPLICATE KEY UPDATE staff_id = VALUES(staff_id),job_id = VALUES(job_id),employee_id = VALUES(employee_id),
+            country_code = VALUES(country_code),worker_id = VALUES(worker_id),
+            office_code = VALUES(office_code),job_code = VALUES(job_code),client_code = VALUES(client_code),
+            holiday_flag = VALUES(holiday_flag),work_hours = VALUES(work_hours),
+            loading = VALUES(loading),end_date = VALUES(end_date),term_flag = VALUES(term_flag),
+            staff_name = VALUES(staff_name),job_title = VALUES(job_title)
+"""
+            values = (row['booking_id'], row['start_date'], row['staff_id'], row['job_id'], row['employee_id'],
+                      row['country_code'], row['worker_id'], row['office_code'], row['job_code'], row['client_code'],
+                      row['holiday_flag'], row['work_hours'], row['loading'], row['end_date'], row['term_flag'],
+                      row['staff_name'], row['job_title'])
             cursor.execute(query, values)
-            connection.commit()
-            print("数据插入成功")
-        except Exception as e:
-            print(e)
-    cursor.close()
-    connection.close()
+    except Exception as e:
+        print(e)
+    finally:
+        connection.commit()
+        print("数据插入成功")
+        cursor.close()
+        connection.close()
 
 
 if __name__ == '__main__':
     startDate = ''
     endDate = ''
     if startDate == '':
-        startDate = current_date = datetime.now().date() - timedelta(days=5)
+        startDate = current_date = datetime.now().date() - timedelta(days=1)
         endDate = datetime.now().date()
     table_name = "ods_advisory_talent_link"
-    select_fields = "staff_id,job_id,employee_id,start_date,country_code,worker_id,office_code,job_code,client_code,holiday_flag,work_hours,loading,end_date,term_flag,staff_name,job_title"
-    joint_index = "staff_id,job_id,employee_id,start_date"
+    select_fields = "booking_id,start_date, staff_id,job_id,employee_id,country_code,worker_id,office_code,job_code,client_code,holiday_flag,work_hours,loading,end_date,term_flag,staff_name,job_title"
+    joint_index = "booking_id,start_date"
     srcEngine = create_engine(
         f'mysql+pymysql://admin_user:{urllib.parse.quote_plus("6a!F@^ac*jBHtc7uUdxC")}@10.158.35.241:9030/advisory_engagement_lifecycle')
     print("任务开始执行")
@@ -56,7 +63,7 @@ if __name__ == '__main__':
     # 获取第一条元素的第一个字段
     data_count = result.fetchone()[0]
     print("doris数据量查询完成")
-    gap = 100
+    gap = 3000
     for i in range(0, data_count, gap):
         end = i + gap
         if end > data_count:
