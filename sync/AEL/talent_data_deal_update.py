@@ -94,7 +94,9 @@ def get_talent_link(sqlserver_engine, doris_engine):
     EmployeeID AS employeeID,
     CASE WHEN CHARINDEX('CHN-CN',EmployeeID)>0 THEN 'CN' ELSE 'HK' END as countryCode,
     StartDate AS startDate  ,
+    StartDateTime AS startDateTime  ,
     EndDate AS endDate , 
+    EndDateTime AS endDateTime , 
     ClientCode  AS clientCode,
     ClientName AS clientName, 
     JobCode AS jobCode , 
@@ -152,7 +154,6 @@ def get_talent_link(sqlserver_engine, doris_engine):
                 else:
                     print(f"StaffBank.StaffIDList没有该worker_id:{worker_id}")
 
-            work_hours = row["workHours"]
             loading = row["loading"]
             country_code = row["countryCode"]
 
@@ -163,45 +164,114 @@ def get_talent_link(sqlserver_engine, doris_engine):
                     "resID": row["resID"], "jobIdDesc": row["jobIdDesc"], "dateRange": row["dateRange"],
                     "createByDate": row["createByDate"]}
 
-            start_date_str = row["startDate"].strftime("%Y-%m-%d")
-            start_date_tmp = row["startDate"]
-            end_date_tmp = row["endDate"]
+            start_date = row["startDate"]
+            end_date = row["startDate"]
+            # 将开始时间和结束时间转换为浮点数
+            start_date_time = convert_hour_to_float(row["startDateTime"])
+            end_date_time = convert_hour_to_float(row["endDateTime"])
 
-            while start_date_tmp <= end_date_tmp:
-                if "CN" == country_code and start_date_str in cnHolidayList:
-                    item["holidayFlag"] = 0
-                    item["workHours"] = 0.0
-                    item["loading"] = 0
-                elif "HK" == country_code and start_date_str in hkHolidayList:
-                    item["holidayFlag"] = 0
-                    item["workHours"] = 0.0
-                    item["loading"] = 0
-                else:
-                    item["holidayFlag"] = 1
-                    item["workHours"] = work_hours
-                    item["loading"] = loading
-                item["startDate"] = start_date_str
-                item["endDate"] = start_date_str
-                tmp = item.copy()
-                result.append(tmp)
-                start_date_tmp += timedelta(days=1)
-                start_date_str = start_date_tmp.strftime("%Y-%m-%d")
+            date_diff = abs(start_date - end_date)
+            if date_diff.days > 1:
+                print("日期差大于一天")
+                print("先处理开始那天和结束那天")
+                start_date_str = start_date.strftime("%Y-%m-%d")
+                work_hour = calculate_hour(start_date_time, 17.5)
+                add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
+                start_date_str = end_date.strftime("%Y-%m-%d")
+                work_hour = calculate_hour(9, end_date_time)
+                add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
+                print("处理中间的时间日期")
+                start_date_new = start_date + timedelta(days=1)
+                end_date_new = end_date - timedelta(days=1)
+                start_date_str = start_date_new.strftime("%Y-%m-%d")
+                add_items_for_result(start_date_new, end_date_new, start_date_str, item, country_code, loading, result)
+
+            elif date_diff.days == 1:
+                print("日期差等于一天")
+                start_date_str = start_date.strftime("%Y-%m-%d")
+                work_hour = calculate_hour(start_date_time, 17.5)
+                add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
+                start_date_str = end_date.strftime("%Y-%m-%d")
+                work_hour = calculate_hour(9, end_date_time)
+                add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
+            else:
+                print("都是当天")
+                start_date_str = end_date.strftime("%Y-%m-%d")
+                work_hour = calculate_hour(start_date_time, end_date_time)
+                add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
         doris_connect.close()
-    return result
+    tar_doris_engine = create_engine(
+        f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
+    table_name = "ods_advisory_talent_link_update_field_and_key_tmp"
+    df_result = pd.DataFrame(result)
+    df.rename(columns=fieldMapping, inplace=True)
+    try:
+        result_inset_count = df_result.to_sql(table_name, tar_doris_engine, if_exists='append', index=False)
+        print(f"数据写入成功，数据条数：{len(result)}。写入数据条数：{result_inset_count}")
+    except Exception as e:
+        print(e)
 
 
-def map_write_to_json(map_data):
-    json_str = json.dumps(map_data)
-    # 将JSON字符串写入文件
-    with open("./data.json", "w") as file:
-        file.write(json_str)
+# 9：00 - 12：00 工作时间
+# 12:00 - 12:30  休息时间
+# 12：30 - 17:30 工作时间
+def calculate_hour(start_hour, end_hour):
+    if start_hour < 9:
+        start_hour = 9
+        if end_hour <= 12:
+            hour = end_hour - start_hour
+        elif 12 < end_hour < 12.5:
+            hour = 12 - start_hour
+        else:
+            hour = end_hour - start_hour - 0.5
+    elif 9 <= start_hour <= 12:
+        if end_hour <= 12:
+            hour = end_hour - start_hour
+        elif 12 < end_hour < 12.5:
+            hour = 12 - start_hour
+        else:
+            hour = end_hour - start_hour - 0.5
+    elif 12 < start_hour <= 12.5:
+        start_hour = 12.5
+        hour = end_hour - start_hour
+    else:
+        hour = end_hour - start_hour
+    return hour
 
 
-def truncateTable(engine, table_name):
-    tarConn = engine.connect()
-    tarConn.execute(text(f"truncate table {table_name}"))
-    tarConn.close()
-    print("table truncate is complete")
+def convert_hour_to_float(dt):
+    # 获取小时和分钟
+    hour = dt.hour
+    minute = dt.minute
+
+    # 将分钟转换为小时的小数部分
+    return hour + minute / 60
+
+
+def add_items_for_result(start_date_tmp, end_date_tmp, start_date_str, item, country_code, loading, result):
+    while start_date_tmp <= end_date_tmp:
+        add_item_for_result(start_date_str, item, country_code, loading, result, 8)
+        start_date_tmp += timedelta(days=1)
+        start_date_str = start_date_tmp.strftime("%Y-%m-%d")
+
+
+def add_item_for_result(start_date_str, item, country_code, loading, result, work_hour):
+    if "CN" == country_code and start_date_str in cnHolidayList:
+        item["holidayFlag"] = 0
+        item["workHours"] = 0.0
+        item["loading"] = 0
+    elif "HK" == country_code and start_date_str in hkHolidayList:
+        item["holidayFlag"] = 0
+        item["workHours"] = 0.0
+        item["loading"] = 0
+    else:
+        item["holidayFlag"] = 1
+        item["workHours"] = loading * 0.01 * work_hour
+        item["loading"] = loading
+    item["startDate"] = start_date_str
+    item["endDate"] = start_date_str
+    tmp = item.copy()
+    result.append(tmp)
 
 
 if __name__ == '__main__':
