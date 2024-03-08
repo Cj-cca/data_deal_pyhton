@@ -164,7 +164,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
                     "createByDate": row["createByDate"]}
 
             start_date = row["startDate"]
-            end_date = row["startDate"]
+            end_date = row["endDate"]
             # 将开始时间和结束时间转换为浮点数
             start_date_time = convert_hour_to_float(row["startDateTime"])
             end_date_time = convert_hour_to_float(row["endDateTime"])
