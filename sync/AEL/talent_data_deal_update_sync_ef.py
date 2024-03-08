@@ -227,8 +227,8 @@ def write_data(talent_link_result):
                 start_date_str = start_date_tmp.strftime("%Y-%m-%d")
         doris_connect.close()
     tar_doris_engine = create_engine(
-        f"mysql+pymysql://root@10.158.16.244:9030/AEL")
-    tableName = "ods_advisory_talent_link_key_new"
+        f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
+    tableName = "ods_advisory_talent_link_update_field_and_key_tmp"
     df = pd.DataFrame(result)
     df.rename(columns=fieldMapping, inplace=True)
     try:
@@ -240,6 +240,7 @@ def write_data(talent_link_result):
 
 if __name__ == '__main__':
     # 问题解决，可以投入使用
+    start_run = time.time()
     oldDorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
     get_holiday_info(oldDorisEngine)
     get_staff_info(oldDorisEngine)
@@ -252,7 +253,7 @@ if __name__ == '__main__':
         time.sleep(10)
         while True:
             try:
-                resultData = taskQueue.get(timeout=60)  # 设置超时以便在队列为空时跳出循环
+                resultData = taskQueue.get(timeout=120)  # 设置超时以便在队列为空时跳出循环
                 t.submit(write_data, resultData)
             except queue.Empty:
                 print("队列没有可获取的数据")
@@ -262,3 +263,4 @@ if __name__ == '__main__':
     t.shutdown(wait=True)
     # 主线程等待生产者线程执行完
     producer_thread.join()
+    print(f"任务执行完成，总用时：{round(time.time() - start_run, 2)}s")
