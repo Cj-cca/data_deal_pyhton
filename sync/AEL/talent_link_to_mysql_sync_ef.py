@@ -40,7 +40,6 @@ def run_new(sql, src_engine_conn, insert_fields):
             term_flag = VALUES(term_flag),
             staff_name = VALUES(staff_name),
             job_title = VALUES(job_title),
-            create_by_date = VALUES(create_by_date),
             res_id = VALUES(res_id),
             eng_partner_director = VALUES(eng_partner_director),
             eng_partner_director_id = VALUES(eng_partner_director_id),
@@ -51,12 +50,13 @@ def run_new(sql, src_engine_conn, insert_fields):
             job_id_desc = VALUES(job_id_desc),
             date_range = VALUES(date_range)
 """
-            values = (row['staff_id'], row['job_id'], row['employee_id'], row['country_code'], row['worker_id'],
-                      row['office_code'], row['job_code'], row['client_code'], row['holiday_flag'], row['work_hours'],
-                      row['loading'], row['end_date'], row['term_flag'], row['staff_name'], row['job_title'],
-                      row['create_by_date'], row['res_id'], row['eng_partner_director'], row['eng_partner_director_id'],
-                      row['inet_email'], row['cost_centre'], row['cost_centre_code'], row['client_name'],
-                      row['job_id_desc'], row['date_range'])
+            values = (
+                row['booking_id'], row['start_date'], row['staff_id'], row['job_id'], row['employee_id'], row['country_code'],
+                row['worker_id'], row['office_code'], row['job_code'], row['client_code'], row['holiday_flag'],
+                row['work_hours'], row['loading'], row['end_date'], row['term_flag'], row['staff_name'],
+                row['job_title'], row['res_id'], row['eng_partner_director'], row['eng_partner_director_id'],
+                row['inet_email'], row['cost_centre'], row['cost_centre_code'], row['client_name'],
+                row['job_id_desc'], row['date_range'])
             cursor.execute(query, values)
     except Exception as e:
         print(e)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     table_name = "ods_advisory_talent_link_key_ei"
     select_fields = ("booking_id,start_date,staff_id,job_id,employee_id,country_code,worker_id,office_code,job_code,"
                      "client_code,holiday_flag,work_hours,loading,end_date,term_flag,staff_name,job_title,"
-                     "create_by_date,res_id,eng_partner_director,eng_partner_director_id,inet_email,cost_centre,"
+                     "res_id,eng_partner_director,eng_partner_director_id,inet_email,cost_centre,"
                      "cost_centre_code,client_name,job_id_desc,date_range")
     joint_index = "booking_id,start_date"
     srcEngine = create_engine(
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     print("任务开始执行")
     srcConn = srcEngine.connect()
     result = srcConn.execute(text(
-        f"select count(*)as cnt from {table_name} where"))
+        f"select count(*)as cnt from {table_name}"))
     # 获取第一条元素的第一个字段
     data_count = result.fetchone()[0]
     print("doris数据量查询完成")

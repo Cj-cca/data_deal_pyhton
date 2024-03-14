@@ -41,7 +41,6 @@ def run_new(sql, src_engine_conn, insert_fields):
             term_flag = VALUES(term_flag),
             staff_name = VALUES(staff_name),
             job_title = VALUES(job_title),
-            create_by_date = VALUES(create_by_date),
             res_id = VALUES(res_id),
             eng_partner_director = VALUES(eng_partner_director),
             eng_partner_director_id = VALUES(eng_partner_director_id),
@@ -77,7 +76,7 @@ if __name__ == '__main__':
     table_name = "ods_advisory_talent_link_key_ei"
     select_fields = ("booking_id,start_date,staff_id,job_id,employee_id,country_code,worker_id,office_code,job_code,"
                      "client_code,holiday_flag,work_hours,loading,end_date,term_flag,staff_name,job_title,"
-                     "create_by_date,res_id,eng_partner_director,eng_partner_director_id,inet_email,cost_centre,"
+                     "res_id,eng_partner_director,eng_partner_director_id,inet_email,cost_centre,"
                      "cost_centre_code,client_name,job_id_desc,date_range")
     joint_index = "booking_id,start_date"
     srcEngine = create_engine(

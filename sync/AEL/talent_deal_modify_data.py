@@ -109,5 +109,3 @@ if __name__ == '__main__':
     mysql_delete_data(mysql_delete_sql)
     # 将新增和修改之后的数据写入历史表中
     sql_list_exec(tarEngine, [sqlMap['insert_data']])
-
-
