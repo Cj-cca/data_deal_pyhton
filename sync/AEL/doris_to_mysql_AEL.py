@@ -1,13 +1,9 @@
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy import create_engine
-from datetime import datetime, timedelta
 
 import pymysql
-import urllib
-
-fields = ['staff_id', 'job_id', 'employee_id', 'start_date', 'country_code', 'worker_id', 'office_code', 'job_code',
-          'client_code', 'holiday_flag', 'work_hours', 'loading', 'end_date', 'term_flag', 'staff_name', 'job_title']
+from urllib.parse import quote_plus as urlquote
 
 
 def run_new(sql, src_engine_conn, insert_fields):
@@ -28,17 +24,39 @@ def run_new(sql, src_engine_conn, insert_fields):
             query = f"""
             INSERT INTO AEL.ODS_ADVISORY_TALENT_LINK ({insert_fields}) 
             VALUES ({insert_value_placeholder}) 
-            ON DUPLICATE KEY UPDATE country_code = VALUES(country_code),worker_id = VALUES(worker_id),
-            office_code = VALUES(office_code),job_code = VALUES(job_code),client_code = VALUES(client_code),
-            holiday_flag = VALUES(holiday_flag),work_hours = VALUES(work_hours),
-            loading = VALUES(loading),end_date = VALUES(end_date),
-            term_flag = VALUES(term_flag),staff_name = VALUES(staff_name),
-            job_title = VALUES(job_title)
+            ON DUPLICATE KEY UPDATE
+            staff_id = VALUES(staff_id),
+            job_id = VALUES(job_id),
+            employee_id = VALUES(employee_id),
+            country_code = VALUES(country_code),
+            worker_id = VALUES(worker_id),
+            office_code = VALUES(office_code),
+            job_code = VALUES(job_code),
+            client_code = VALUES(client_code),
+            holiday_flag = VALUES(holiday_flag),
+            work_hours = VALUES(work_hours),
+            loading = VALUES(loading),
+            end_date = VALUES(end_date),
+            term_flag = VALUES(term_flag),
+            staff_name = VALUES(staff_name),
+            job_title = VALUES(job_title),
+            create_by_date = VALUES(create_by_date),
+            res_id = VALUES(res_id),
+            eng_partner_director = VALUES(eng_partner_director),
+            eng_partner_director_id = VALUES(eng_partner_director_id),
+            inet_email = VALUES(inet_email),
+            cost_centre = VALUES(cost_centre),
+            cost_centre_code = VALUES(cost_centre_code),
+            client_name = VALUES(client_name),
+            job_id_desc = VALUES(job_id_desc),
+            date_range = VALUES(date_range)
 """
-            values = (row['staff_id'], row['job_id'], row['employee_id'], row['start_date'], row['country_code'],
-                      row['worker_id'], row['office_code'], row['job_code'], row['client_code'], row['holiday_flag'],
-                      row['work_hours'], row['loading'], row['end_date'], row['term_flag'], row['staff_name'],
-                      row['job_title'])
+            values = (row['staff_id'], row['job_id'], row['employee_id'], row['country_code'], row['worker_id'],
+                      row['office_code'], row['job_code'], row['client_code'], row['holiday_flag'], row['work_hours'],
+                      row['loading'], row['end_date'], row['term_flag'], row['staff_name'], row['job_title'],
+                      row['create_by_date'], row['res_id'], row['eng_partner_director'], row['eng_partner_director_id'],
+                      row['inet_email'], row['cost_centre'], row['cost_centre_code'], row['client_name'],
+                      row['job_id_desc'], row['date_range'])
             cursor.execute(query, values)
     except Exception as e:
         print(e)
@@ -49,22 +67,20 @@ def run_new(sql, src_engine_conn, insert_fields):
         connection.close()
 
 
-
 if __name__ == '__main__':
-    startDate = ''
-    endDate = ''
-    if startDate == '':
-        startDate = current_date = datetime.now().date() - timedelta(days=8)
-        endDate = datetime.now().date()
-    table_name = "ods_advisory_talent_link"
-    select_fields = "staff_id,job_id,employee_id,start_date,country_code,worker_id,office_code,job_code,client_code,holiday_flag,work_hours,loading,end_date,term_flag,staff_name,job_title"
-    joint_index = "staff_id,job_id,employee_id,start_date"
+    table_name = "ods_advisory_talent_link_key_ei"
+    select_fields = ("booking_id,start_date,staff_id,job_id,employee_id,country_code,worker_id,office_code,job_code,"
+                     "client_code,holiday_flag,work_hours,loading,end_date,term_flag,staff_name,job_title,"
+                     "create_by_date,res_id,eng_partner_director,eng_partner_director_id,inet_email,cost_centre,"
+                     "cost_centre_code,client_name,job_id_desc,date_range")
+    joint_index = "booking_id,start_date"
     srcEngine = create_engine(
-        f'mysql+pymysql://admin_user:{urllib.parse.quote_plus("6a!F@^ac*jBHtc7uUdxC")}@10.158.35.241:9030/advisory_engagement_lifecycle')
+        f'mysql+pymysql://admin_user:{urlquote("6a!F@^ac*jBHtc7uUdxC")}@10.158.35.241:9030'
+        f'/advisory_engagement_lifecycle')
     print("任务开始执行")
     srcConn = srcEngine.connect()
     result = srcConn.execute(text(
-        f"select count(*)as cnt from {table_name} where create_by_date >= \'{startDate}\' and create_by_date < \'{endDate}\'"))
+        f"select count(*)as cnt from {table_name} where"))
     # 获取第一条元素的第一个字段
     data_count = result.fetchone()[0]
     print("doris数据量查询完成")
@@ -74,7 +90,7 @@ if __name__ == '__main__':
         if end > data_count:
             end = data_count
         sql_main = text(
-            f"select {select_fields} from (select ROW_NUMBER() OVER(Order by {joint_index}) AS rowNumber,* from {table_name} where create_by_date >= \'{startDate}\' and create_by_date < \'{endDate}\') as tbl where tbl.RowNumber >{i} and tbl.RowNumber <={end}")
+            f"select {select_fields} from (select ROW_NUMBER() OVER(Order by {joint_index}) AS rowNumber,* from {table_name}) as tbl where tbl.RowNumber >{i} and tbl.RowNumber <={end}")
         print("开始执行当前批次数据")
         run_new(sql_main, srcConn, select_fields)
 
