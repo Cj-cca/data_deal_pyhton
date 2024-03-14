@@ -1,10 +1,8 @@
 import pandas as pd
-import pyodbc
 import urllib
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from datetime import datetime, timedelta
-import json
 from urllib.parse import quote_plus as urlquote
 
 cnHolidayList = []
@@ -32,15 +30,15 @@ delay_data = {}
 
 def get_holiday_info(engine):
     sql = f""" 
-     SELECT DATE_FORMAT(WorkDate,'%Y-%m-%d') AS WorkDate,CountryCode
-     FROM LMS.Calendar 
-     WHERE WorkDate >= \'{holidayStartDate}\' AND DateStatus IN ('H','S')
+     SELECT DATE_FORMAT(work_date,'%Y-%m-%d') AS WorkDate,country_code
+     FROM lms.ods_fin_calendar_day_ei 
+     WHERE work_date >= \'{holidayStartDate}\' AND date_status IN ('H','S')
      """
     result = pd.read_sql(text(sql), engine.connect())
     for index, row in result.iterrows():
-        if 'CN' == row['CountryCode']:
+        if 'CN' == row['country_code']:
             cnHolidayList.append(row['WorkDate'])
-        if 'HK' == row['CountryCode']:
+        if 'HK' == row['country_code']:
             hkHolidayList.append(row['WorkDate'])
 
 
@@ -92,7 +90,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
     SELECT 
     BookingID AS bookingID,
     EmployeeID AS employeeID,
-    CASE WHEN CHARINDEX('CHN-CN',EmployeeID)>0 THEN 'CN' ELSE 'HK' END as countryCode,
+    CASE WHEN CHARINDEX('CHN',EmployeeID)>0 THEN 'CN' ELSE 'HK' END as countryCode,
     StartDate AS startDate  ,
     StartDateTime AS startDateTime  ,
     EndDate AS endDate , 
@@ -117,16 +115,17 @@ def get_talent_link(sqlserver_engine, doris_engine):
     talent_link_result = pd.read_sql(text(sql), sqlserver_engine.connect())
     result = []
     if talent_link_result.size > 0:
-        sql = f"""select CountryCode,StaffID,TermDate,StaffName,JobTitle,TermFlag from StaffBank.StaffBank"""
+        sql = f"""select country_code,staff_id,term_date,staff_name,job_title,term_flag from StaffBank.StaffBank"""
         staff_bank_result = pd.read_sql(text(sql), doris_connect)
         staff_id_map = {}
         for index, row in staff_bank_result.iterrows():
-            if row["TermDate"] is not None:
-                staff_id_map[row["StaffID"]] = [row["CountryCode"], row["TermDate"].strftime("%Y-%m-%d").split("T")[0],
-                                                row["StaffName"], row["JobTitle"], row["TermFlag"]]
+            if row["term_date"] is not None:
+                staff_id_map[row["staff_id"]] = [row["country_code"],
+                                                 row["term_date"].strftime("%Y-%m-%d").split("T")[0],
+                                                 row["staff_name"], row["job_title"], row["term_flag"]]
             else:
-                staff_id_map[row["StaffID"]] = [row["CountryCode"], '1999-01-01', row["StaffName"], row["JobTitle"],
-                                                row["TermFlag"]]
+                staff_id_map[row["staff_id"]] = [row["country_code"], '1999-01-01', row["staff_name"], row["job_title"],
+                                                 row["term_flag"]]
 
         for index, row in talent_link_result.iterrows():
             update_date = row["updateDate"]
@@ -142,16 +141,16 @@ def get_talent_link(sqlserver_engine, doris_engine):
             if term_date == "":
                 # staffBank中没有这个staffID,则需要先去staffIDList里面查询staffID，然后在到staffBank里面查询
                 worker_id = row["workerID"]
-                sql = f"""select StaffID from StaffBank.StaffIDList where  Worker_ID = \'{worker_id}\' order by UpdateTime desc limit 1"""
+                sql = f"""select staff_id from staff_bank.ods_hr_staff_id_list_day_ei where  worker_id = \'{worker_id}\' order by update_time desc limit 1"""
                 staff_id_list_result = pd.read_sql(text(sql), doris_connect)
                 if staff_id_list_result.size > 0:
-                    sf_id = staff_id_list_result.iloc[0]["StaffID"]
+                    sf_id = staff_id_list_result.iloc[0]["staff_id"]
                     row["staffID"] = sf_id
                     term_date = set_staff_info(row, staff_id_map)
                     if term_date == "":
-                        print(f"StaffBank.StaffBank没有该staff_id: {sf_id}")
+                        print(f"staff_bank.ods_hr_staff_id_list_day_ei没有该staff_id: {sf_id}")
                 else:
-                    print(f"StaffBank.StaffIDList没有该worker_id:{worker_id}")
+                    print(f"staff_bank.ods_hr_staff_id_list_day_ei没有该worker_id:{worker_id}")
 
             loading = row["loading"]
             country_code = row["countryCode"]

@@ -14,7 +14,7 @@ cnHolidayList = []
 hkHolidayList = []
 
 startDate = '2018-08-16'
-endDate = '2024-02-01'
+endDate = '2024-04-01'
 # startDate = '2018-08-16'
 # endDate = '2023-10-11'
 
@@ -36,29 +36,29 @@ staff_id_map = {}
 
 def get_holiday_info(engine):
     sql = f""" 
-     SELECT DATE_FORMAT(WorkDate,'%Y-%m-%d') AS WorkDate,CountryCode
-     FROM LMS.Calendar 
-     WHERE DateStatus IN ('H','S')
+     SELECT DATE_FORMAT(work_date,'%Y-%m-%d') AS WorkDate,country_code
+     FROM lms.ods_fin_calendar_day_ei 
+     WHERE date_status IN ('H','S')
      """
     result = pd.read_sql(text(sql), engine.connect())
     for index, row in result.iterrows():
-        if 'CN' == row['CountryCode']:
+        if 'CN' == row['country_code']:
             cnHolidayList.append(row['WorkDate'])
-        if 'HK' == row['CountryCode']:
+        if 'HK' == row['country_code']:
             hkHolidayList.append(row['WorkDate'])
 
 
 def get_staff_info(doris_engine):
     doris_connect = doris_engine.connect()
-    sql = f"""select CountryCode,StaffID,TermDate,StaffName,JobTitle,TermFlag from StaffBank.StaffBank"""
+    sql = f"""select country_code,staff_id,term_date,staff_name,job_title,term_flag from staff_bank.ods_hr_staffbank_day_ei"""
     staff_bank_result = pd.read_sql(text(sql), doris_connect)
     for index, row in staff_bank_result.iterrows():
-        if row["TermDate"] is not None:
-            staff_id_map[row["StaffID"]] = [row["CountryCode"], row["TermDate"].strftime("%Y-%m-%d").split("T")[0],
-                                            row["StaffName"], row["JobTitle"], row["TermFlag"]]
+        if row["term_date"] is not None:
+            staff_id_map[row["staff_id"]] = [row["country_code"], row["term_date"].strftime("%Y-%m-%d").split("T")[0],
+                                             row["staff_name"], row["job_title"], row["term_flag"]]
         else:
-            staff_id_map[row["StaffID"]] = [row["CountryCode"], '1999-01-01', row["StaffName"], row["JobTitle"],
-                                            row["TermFlag"]]
+            staff_id_map[row["staff_id"]] = [row["country_code"], '1999-01-01', row["staff_name"], row["job_title"],
+                                             row["term_flag"]]
 
 
 def set_staff_info(row):
@@ -108,7 +108,7 @@ def get_talent_link(start, end, sqlserver_engine):
         SELECT 
         BookingID AS bookingID,
         EmployeeID AS employeeID,
-        CASE WHEN CHARINDEX('CHN-CN',EmployeeID)>0 THEN 'CN' ELSE 'HK' END as countryCode,
+        CASE WHEN CHARINDEX('CHN',EmployeeID)>0 THEN 'CN' ELSE 'HK' END as countryCode,
         StartDate AS startDate  ,
         StartDateTime AS startDateTime  ,
         EndDate AS endDate , 
@@ -163,7 +163,8 @@ def task_producer(tq):
 
 def write_data(talent_link_result):
     print("开始处理原始数据")
-    old_doris_engine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
+    old_doris_engine = create_engine(
+        f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/staff_bank")
     doris_connect = old_doris_engine.connect()
     result = []
     if talent_link_result.size > 0:
@@ -181,16 +182,16 @@ def write_data(talent_link_result):
             if term_date == "":
                 # staffBank中没有这个staffID,则需要先去staffIDList里面查询staffID，然后在到staffBank里面查询
                 worker_id = row["workerID"]
-                sql = f"""select StaffID from StaffBank.StaffIDList where  Worker_ID = \'{worker_id}\' order by UpdateTime desc limit 1"""
+                sql = f"""select staff_id from staff_bank.ods_hr_staff_id_list_day_ei where  worker_id = \'{worker_id}\' order by update_time desc limit 1"""
                 staff_id_list_result = pd.read_sql(text(sql), doris_connect)
                 if staff_id_list_result.size > 0:
-                    sf_id = staff_id_list_result.iloc[0]["StaffID"]
+                    sf_id = staff_id_list_result.iloc[0]["staff_id"]
                     row["staffID"] = sf_id
                     term_date = set_staff_info(row)
                     if term_date == "":
-                        print(f"StaffBank.StaffBank没有该staff_id: {sf_id}")
+                        print(f"staff_bank.ods_hr_staff_id_list_day_ei没有该staff_id: {sf_id}")
                 else:
-                    print(f"StaffBank.StaffIDList没有该worker_id:{worker_id}")
+                    print(f"staff_bank.ods_hr_staff_id_list_day_ei没有该worker_id:{worker_id}")
 
             loading = row["loading"]
             country_code = row["countryCode"]
@@ -315,7 +316,8 @@ def add_item_for_result(start_date_str, item, country_code, loading, result, wor
 if __name__ == '__main__':
     # 问题解决，可以投入使用
     start_run = time.time()
-    oldDorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
+    oldDorisEngine = create_engine(
+        f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/staff_bank")
     get_holiday_info(oldDorisEngine)
     get_staff_info(oldDorisEngine)
     max_queue_size = 20
