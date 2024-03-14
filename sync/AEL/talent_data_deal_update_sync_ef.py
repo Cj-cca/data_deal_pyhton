@@ -241,7 +241,7 @@ def write_data(talent_link_result):
         doris_connect.close()
     tar_doris_engine = create_engine(
         f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
-    table_name = "ods_advisory_talent_link_update_field_and_key_tmp"
+    table_name = "ods_advisory_talent_link_key_ei"
     df = pd.DataFrame(result)
     df.rename(columns=fieldMapping, inplace=True)
     try:

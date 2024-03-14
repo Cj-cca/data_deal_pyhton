@@ -115,7 +115,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
     talent_link_result = pd.read_sql(text(sql), sqlserver_engine.connect())
     result = []
     if talent_link_result.size > 0:
-        sql = f"""select country_code,staff_id,term_date,staff_name,job_title,term_flag from StaffBank.StaffBank"""
+        sql = f"""select country_code,staff_id,term_date,staff_name,job_title,term_flag from staff_bank.ods_hr_staffbank_day_ei"""
         staff_bank_result = pd.read_sql(text(sql), doris_connect)
         staff_id_map = {}
         for index, row in staff_bank_result.iterrows():
@@ -266,12 +266,11 @@ def add_item_for_result(start_date_str, item, country_code, loading, result, wor
 if __name__ == '__main__':
     sqlserverEngine = create_engine("mssql+pymssql://TL_ADV_Reader:%s@CNSHADBSPWV001:1433/TalentLinkDBAdv" \
                                     % (urllib.parse.quote_plus('Ac1a7k0wG4bD')))
-    dorisEngine = create_engine('mysql+pymysql://root@10.158.34.175:9030/StaffBank')
     tarDorisEngine = create_engine(
         f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
-    get_holiday_info(dorisEngine)
-    result_data = get_talent_link(sqlserverEngine, dorisEngine)
-    tableName = "ods_advisory_talent_link_update_field_and_key_tmp"
+    get_holiday_info(tarDorisEngine)
+    result_data = get_talent_link(sqlserverEngine, tarDorisEngine)
+    tableName = "ods_advisory_talent_link_key_ei"
     df = pd.DataFrame(result_data)
     df.rename(columns=fieldMapping, inplace=True)
     result_count = df.to_sql(tableName, tarDorisEngine, if_exists='append', index=False)
