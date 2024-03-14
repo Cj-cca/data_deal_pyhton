@@ -171,22 +171,22 @@ def get_talent_link(sqlserver_engine, doris_engine):
 
             date_diff = abs(start_date - end_date)
             if date_diff.days > 1:
-                print("日期差大于一天")
-                print("先处理开始那天和结束那天")
+                # print("日期差大于一天")
+                # print("先处理开始那天和结束那天")
                 start_date_str = start_date.strftime("%Y-%m-%d")
                 work_hour = calculate_hour(start_date_time, 17.5)
                 add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
                 start_date_str = end_date.strftime("%Y-%m-%d")
                 work_hour = calculate_hour(9, end_date_time)
                 add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
-                print("处理中间的时间日期")
+                # print("处理中间的时间日期")
                 start_date_new = start_date + timedelta(days=1)
                 end_date_new = end_date - timedelta(days=1)
                 start_date_str = start_date_new.strftime("%Y-%m-%d")
                 add_items_for_result(start_date_new, end_date_new, start_date_str, item, country_code, loading, result)
 
             elif date_diff.days == 1:
-                print("日期差等于一天")
+                # print("日期差等于一天")
                 start_date_str = start_date.strftime("%Y-%m-%d")
                 work_hour = calculate_hour(start_date_time, 17.5)
                 add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
@@ -194,7 +194,7 @@ def get_talent_link(sqlserver_engine, doris_engine):
                 work_hour = calculate_hour(9, end_date_time)
                 add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
             else:
-                print("都是当天")
+                # print("都是当天")
                 start_date_str = end_date.strftime("%Y-%m-%d")
                 work_hour = calculate_hour(start_date_time, end_date_time)
                 add_item_for_result(start_date_str, item, country_code, loading, result, work_hour)
@@ -272,7 +272,7 @@ if __name__ == '__main__':
         f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/advisory_engagement_lifecycle")
     get_holiday_info(dorisEngine)
     result_data = get_talent_link(sqlserverEngine, dorisEngine)
-    tableName = "ods_advisory_talent_link_update_field_and_key"
+    tableName = "ods_advisory_talent_link_update_field_and_key_tmp"
     df = pd.DataFrame(result_data)
     df.rename(columns=fieldMapping, inplace=True)
     result_count = df.to_sql(tableName, tarDorisEngine, if_exists='append', index=False)
