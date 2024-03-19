@@ -51,12 +51,12 @@ def run_new(sql, src_engine_conn, insert_fields):
             job_id_desc = VALUES(job_id_desc),
             date_range = VALUES(date_range)
 """
-            values = (row['staff_id'], row['job_id'], row['employee_id'], row['country_code'], row['worker_id'],
-                      row['office_code'], row['job_code'], row['client_code'], row['holiday_flag'], row['work_hours'],
-                      row['loading'], row['end_date'], row['term_flag'], row['staff_name'], row['job_title'],
-                      row['create_by_date'], row['res_id'], row['eng_partner_director'], row['eng_partner_director_id'],
-                      row['inet_email'], row['cost_centre'], row['cost_centre_code'], row['client_name'],
-                      row['job_id_desc'], row['date_range'])
+            values = (row['booking_id'], row['start_date'], row['staff_id'], row['job_id'], row['employee_id'],
+                      row['country_code'], row['worker_id'], row['office_code'], row['job_code'], row['client_code'],
+                      row['holiday_flag'], row['work_hours'], row['loading'], row['end_date'], row['term_flag'],
+                      row['staff_name'], row['job_title'], row['res_id'], row['eng_partner_director'],
+                      row['eng_partner_director_id'], row['inet_email'], row['cost_centre'], row['cost_centre_code'],
+                      row['client_name'], row['job_id_desc'], row['date_range'])
             cursor.execute(query, values)
     except Exception as e:
         print(e)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     startDate = ''
     endDate = ''
     if startDate == '':
-        startDate = current_date = datetime.now().date() - timedelta(days=1)
+        startDate = datetime.now().date() - timedelta(days=8)
         endDate = datetime.now().date()
     table_name = "ods_advisory_talent_link_key_ei"
     select_fields = ("booking_id,start_date,staff_id,job_id,employee_id,country_code,worker_id,office_code,job_code,"

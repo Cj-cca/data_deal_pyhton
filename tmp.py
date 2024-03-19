@@ -1,116 +1,143 @@
-import pandas as pd
-import pyodbc
-import urllib
-from sqlalchemy import text
-from sqlalchemy import create_engine
-from datetime import datetime, timedelta
+# !/usr/bin/env python
+# -*- coding: utf-8 -*-
+import datetime
 import json
+import re
+import zlib
+import time
+import pandas
+import requests
+import base64
+from sqlalchemy import create_engine
+from sqlalchemy import text
 from urllib.parse import quote_plus as urlquote
 
+selectColumn = ["BUCode", "BUName", "BudgetYearName", "CurrencyName", "TerritoryName", "BudgetItemName", "Budget",
+                "IsDeleted", "Id", "LastModificationTime"]
 
-# 9：00 - 12：00 工作时间
-# 12:00 - 12:30  休息时间
-# 12：30 - 17:30 工作时间
-def calculate_hour(start_hour, end_hour):
-    if start_hour < 9:
-        start_hour = 9
-        if end_hour <= 12:
-            hour = end_hour - start_hour
-        elif 12 < end_hour < 12.5:
-            hour = 12 - start_hour
-        else:
-            hour = end_hour - start_hour - 0.5
-    elif 9 <= start_hour <= 12:
-        if end_hour <= 12:
-            hour = end_hour - start_hour
-        elif 12 < end_hour < 12.5:
-            hour = 12 - start_hour
-        else:
-            hour = end_hour - start_hour - 0.5
-    elif 12 < start_hour <= 12.5:
-        start_hour = 12.5
-        hour = end_hour - start_hour
+fieldMapping = {"BUCode": "bu_code", "BUName": "bu_name", "BudgetYearName": "budget_year_code",
+                "CurrencyName": "currency_code", "TerritoryName": "territory_code",
+                "BudgetItemName": "budget_item_name", "Budget": "budget", "IsDeleted": "is_deleted", "Id": "id",
+                "LastModificationTime": "last_modification_time"}
+settingsCode = "REST"
+tarTableNameOds = "ods_fin_budget_raw_data_rest_bu_hour_ei"
+
+avgCostTime = 0
+maxCostTime = 0
+totalDataCount = 0
+totalRequestDataCount = 0
+totalInsertCount = 0
+createTime = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+delta = datetime.timedelta(days=3)
+search_start = (createTime - delta).strftime("%Y-%m-%dT00:00:00")
+search_end = createTime.strftime("%Y-%m-%dT00:00:00")
+tarEngine = create_engine(
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/procurement_all"
+)
+
+def getToken(url, app_code, secret_key):
+    body = {
+        "appCode": app_code,
+        "secretKey": secret_key
+    }
+    response = requests.post(url, json=body, verify=False)
+    if response.status_code == 200:
+        # Request was successful
+        print("POST request successful!")
+        data_frame = pandas.json_normalize(response.json())
+        return data_frame.get("data.token")[0]
     else:
-        hour = end_hour - start_hour
-    return hour
+        # Request failed
+        print("POST request failed!")
+        print("Status code:", response.status_code)
+        print("Error message:", response.text)
 
 
-def convert_hour_to_float(dt):
-    # 获取小时和分钟
-    hour = dt.hour
-    minute = dt.minute
+def syncApiData(token, query_url, page_index=1, search_after=None, filters=None):
+    global avgCostTime, maxCostTime, totalDataCount, totalRequestDataCount
+    headers = {
+        "Authorization": "Bearer " + str(token)
+    }
+    body = {
+        "SearchAfter": [] if search_after is None else search_after,
+        "settingsCode": settingsCode,
+        "keyword": "",
+        "filters": [] if filters is None else filters,
+        "pageSize": 1000,
+        "sorts": [
+            {
+                "field": "LastModificationTime",
+                "isAscending": True
+            },
+            {
+                "field": "Id",
+                "isAscending": True
+            }
+        ]
+    }
 
-    # 将分钟转换为小时的小数部分
-    return hour + minute / 60
+    proxies = requests.utils.getproxies()
+    if proxies and 'https' in proxies:
+        proxies['https'] = proxies['http']
+    start = time.time()
+    response = requests.post(query_url, headers=headers, json=body, proxies=proxies, verify=False).json()
+    cost_time = round(time.time() - start, 2)
+    print(f"page {page_index} data select complete, cost {cost_time}s")
+    if len(response['data']['data']) == 0:
+        avgCostTime /= page_index
+        print("该批次数据为空，数据查询完成")
+        return
+    avgCostTime += cost_time
+    if maxCostTime < cost_time:
+        maxCostTime = cost_time
+    totalDataCount = response['data']['totalCount']
+    data_frame = pandas.json_normalize(response, record_path=["data", "data"])
+    last_modification_time = data_frame.loc[len(data_frame) - 1]['LastModificationTime']
+    ids = data_frame.loc[len(data_frame) - 1]['Id']
+    totalRequestDataCount += len(data_frame)
+    deal_dwd(data_frame)
+    search_after = [str(last_modification_time), str(ids)]
+    page_index += 1
+    syncApiData(token, query_url, page_index=page_index, search_after=search_after)
 
 
-def add_items_for_result(start_date_tmp, end_date_tmp, start_date_str, item, country_code, loading, result):
-    while start_date_tmp <= end_date_tmp:
-        add_item_for_result(start_date_str, item, country_code, loading, result, 8)
-        start_date_tmp += timedelta(days=1)
-        start_date_str = start_date_tmp.strftime("%Y-%m-%d")
-
-
-def add_item_for_result(start_date_str, item, country_code, loading, result, work_hour):
-    if "CN" == country_code:
-        item["holidayFlag"] = 0
-        item["workHours"] = 0.0
-        item["loading"] = 0
-    elif "HK" == country_code:
-        item["holidayFlag"] = 0
-        item["workHours"] = 0.0
-        item["loading"] = 0
-    else:
-        item["holidayFlag"] = 1
-        item["workHours"] = loading * 0.01 * work_hour
-        item["loading"] = loading
-    item["startDate"] = start_date_str
-    item["endDate"] = start_date_str
-    tmp = item.copy()
-    result.append(tmp)
-
-
-def run():
-    item = {}
-    result = []
-    start_date = datetime.strptime("2023-01-01", "%Y-%m-%d")
-    end_date = datetime.strptime("2023-01-02", "%Y-%m-%d")
-    # 将开始时间和结束时间转换为浮点数
-    start_date_time = convert_hour_to_float(datetime.strptime("2023-01-01 11:30:00", "%Y-%m-%d %H:%M:%S"))
-    end_date_time = convert_hour_to_float(datetime.strptime("2023-01-01 13:00:00", "%Y-%m-%d %H:%M:%S"))
-
-    date_diff = abs(start_date - end_date)
-    if date_diff.days > 1:
-        print("日期差大于一天")
-        print("先处理开始那天和结束那天")
-        start_date_str = start_date.strftime("%Y-%m-%d")
-        work_hour = calculate_hour(start_date_time, 17.5)
-        add_item_for_result(start_date_str, item, '', 100, result, work_hour)
-        start_date_str = end_date.strftime("%Y-%m-%d")
-        work_hour = calculate_hour(9, end_date_time)
-        add_item_for_result(start_date_str, item, '', 100, result, work_hour)
-        print("处理中间的时间日期")
-        start_date_new = start_date + timedelta(days=1)
-        end_date_new = end_date - timedelta(days=1)
-        start_date_str = start_date_new.strftime("%Y-%m-%d")
-        add_items_for_result(start_date_new, end_date_new, start_date_str, item, '', 100, result)
-
-    elif date_diff.days == 1:
-        print("日期差等于一天")
-        start_date_str = start_date.strftime("%Y-%m-%d")
-        work_hour = calculate_hour(start_date_time, 17.5)
-        add_item_for_result(start_date_str, item, '', 100, result, work_hour)
-        start_date_str = end_date.strftime("%Y-%m-%d")
-        work_hour = calculate_hour(9, end_date_time)
-        add_item_for_result(start_date_str, item, '', 100, result, work_hour)
-    else:
-        print("都是当天")
-        start_date_str = end_date.strftime("%Y-%m-%d")
-        work_hour = calculate_hour(start_date_time, end_date_time)
-        add_item_for_result(start_date_str, item, '', 100, result, work_hour)
-
-    print(json.dumps(result, indent=4, ensure_ascii=False))
+def deal_dwd(data_frame):
+    global totalInsertCount
+    result_dataframe = data_frame[selectColumn]
+    result_dataframe.rename(columns=fieldMapping, inplace=True)
+    new_column = pandas.Series([createTime] * len(result_dataframe), name='upload_time')
+    result_dataframe = pandas.concat([result_dataframe, new_column], axis=1)
+    insert_count = result_dataframe.to_sql(tarTableNameOds, tarEngine, if_exists='append', index=False)
+    if insert_count is None:
+        insert_count = 0
+        print("insert_count is None")
+    totalInsertCount += insert_count
+    print(f"{tarTableNameOds}数据插入成功，总行数{len(result_dataframe)}，受影响行数：", insert_count)
 
 
 if __name__ == '__main__':
-    run()
+    getTokenUrl = "https://search.asia.pwcinternal.com/api/auth/token"
+    appCode = "DataWarehouse"
+    secretKey = "7631295a14c044a2a52e193b880f400f"
+    requestToken = getToken(getTokenUrl, appCode, secretKey)
+    data_url = "https://search.asia.pwcinternal.com/api/open-api/search"
+    filter1 = {
+        "field": "LastModificationTime",
+        "operator": "gte",
+        "values": [
+            search_start
+        ]
+    }
+    filter2 = {
+        "field": "LastModificationTime",
+        "operator": "lte",
+        "values": [
+            search_end
+        ]
+    }
+    filter_all = [filter1, filter2]
+    syncApiData(requestToken, data_url, filters=filter_all)
+    # syncApiData(requestToken, data_url)
+    print(
+        f"数据同步完成,数据总条数：{totalDataCount},请求到的数据条数{totalRequestDataCount},实际插入数据条数：{totalInsertCount},请求数据最长时间：{maxCostTime},平均请求时间：{avgCostTime}")
+    totalInsertCount = 0

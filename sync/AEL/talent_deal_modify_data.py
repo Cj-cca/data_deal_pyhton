@@ -102,10 +102,11 @@ if __name__ == '__main__':
     # 获取删除和修改了的booking_id，并在doris和mysql中删除
     select_sql = f"select booking_id from {doris_tableName_his} where end_dt = CURDATE()"
     booking_id_lists_str = select_data(tarEngine, select_sql)
-    doris_delete_sql = f"delete from {doris_AEL_table} where booking_id in ({booking_id_lists_str})"
-    mysql_delete_sql = f"delete from {mysql_AEL_table} where booking_id in ({booking_id_lists_str})"
-    sql_list_exec(tarEngine, [doris_delete_sql])
-    print("历史表中删除和修改的了的原始数据删除成功")
-    mysql_delete_data(mysql_delete_sql)
+    if booking_id_lists_str != '':
+        doris_delete_sql = f"delete from {doris_AEL_table} where booking_id in ({booking_id_lists_str})"
+        mysql_delete_sql = f"delete from {mysql_AEL_table} where booking_id in ({booking_id_lists_str})"
+        sql_list_exec(tarEngine, [doris_delete_sql])
+        print("历史表中删除和修改的了的原始数据删除成功")
+        mysql_delete_data(mysql_delete_sql)
     # 将新增和修改之后的数据写入历史表中
     sql_list_exec(tarEngine, [sqlMap['insert_data']])
