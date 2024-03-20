@@ -20,6 +20,8 @@
 # UAT: 10.157.108.63            oats_talentlink/D^CcEN$YUBQg
 # Prod: 10.157.112.167         oats_talentlink/Fo@tI%Vwc(AO
 
+
+#vip: 10.158.15.148:6030
 # conn_obj = pymysql.connect(
 #     host='10.158.35.241',  # MySQL服务端的IP地址
 #     port=9030,  # MySQL默认PORT地址(端口号)

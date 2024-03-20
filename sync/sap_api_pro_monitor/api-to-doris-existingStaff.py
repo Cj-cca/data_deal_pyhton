@@ -174,8 +174,11 @@ tarExistingStaffTableNameDwd = "dwd_existing_staff_day_ef"
 tarExistingStaffTableNameOds = "ods_existing_staff_day_ei"
 tarExistingStaffTableNameOdsDetail = "ods_existing_staff_detail_day_ei"
 
+# tarEngine = create_engine(
+#     f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage_test"
+# )
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage_test"
+    f"mysql+pymysql://root@10.158.16.244:9030/work_day_stage"
 )
 batchID = 0
 avgCostTime = 0
@@ -419,7 +422,7 @@ if __name__ == '__main__':
     user = "sb-a8531244-374b-414c-8944-0dbdf941c2e5!b1813|it-rt-pwc-dev!b39"
     pwd = "f4aee3e5-9539-4568-be98-404a5c6ca253$yxW2FNy_fKA8a1Fjn44SM3zjSt4VGvIbzu9tQnHfWdg="
     # requestToken = getToken(getTokenUrl, user, pwd)
-    requestToken = "Bearer eyJ0b2tlbkNvbnRlbnQiOnsiYXBpS2V5IjoiWmpFM09UUTVZell5T1RaaVpUTTBNR016WVdaallUQXdZalpoTVEiLCJzZlByaW5jaXBsZSI6IlB3Q192UHJvZmlsZSNESVYjcHJpY2V3YXQwNUQiLCJpc3N1ZWRGb3IiOiJwcmljZXdhdDA1RCIsInNjb3BlIjoiIiwiaXNzdWVkQXQiOjE3MDkyNzUwNDA5ODksImV4cGlyZXNBdCI6MTcwOTM2MTQ0MDk4OX0sInNpZ25hdHVyZSI6IllHVVowMDBFYVh4dXY3Z2xuZDU5eGY2MWk1WDkzQjhFYWVsTDVWbTk1Tmw5aXpzMkErZGNhNFd5eUQ5dkwwZU1QWnNxejRRbTV2Q3A3UHAvVlpBOGlCMXJoYUxCcjJYcTFyblNzRmtWTDgyYXYrRDFIeU84b0I3dkVKRnk0N201M3oxcXlkZGxjVlJMMXBGcGhQaFVyQ2RUcGYwaVhkSjJ0TXM5bVM2VkJMOD0ifQ=="
+    requestToken = "Bearer eyJ0b2tlbkNvbnRlbnQiOnsiYXBpS2V5IjoiWmpFM09UUTVZell5T1RaaVpUTTBNR016WVdaallUQXdZalpoTVEiLCJzZlByaW5jaXBsZSI6IlB3Q192UHJvZmlsZSNESVYjcHJpY2V3YXQwNUQiLCJpc3N1ZWRGb3IiOiJwcmljZXdhdDA1RCIsInNjb3BlIjoiIiwiaXNzdWVkQXQiOjE3MTA4Mzc4ODI0NzksImV4cGlyZXNBdCI6MTcxMDkyNDI4MjQ3OX0sInNpZ25hdHVyZSI6ImFvR2U1d3dtSFhIMWdiWHFOdmRHcGxvaWpqVDRIYjg4Z3AwWEw1ZmdVdHFPVG1GSStnWjEraVJBdWJHTTkyak1nUkhhaTVjSU93Sm8zSGRVYXNzUTl5ZWs5THhCcWlKTjhtbmZQYTNRT1Q4R2NtWGZSSUVDUUJUeC9vbU82K2pOdTBYQVkxUGkyWEJFOXBKMlZteHJTV1V5QXJpbGdDOER6VTB3OFpnZHRCWT0ifQ=="
     apiDataCount = get_api_data_count(getDataCountUrl, requestToken)
     print(f"{apiName} data count: {apiDataCount}")
     # pro api

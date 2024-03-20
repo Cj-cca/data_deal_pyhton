@@ -16,7 +16,7 @@ fieldMap = {'X.U.FEFF.RecipientEmail': 'feff_recipient_email', 'Finished': 'fini
 
 surveyDataOrchestraAnonymousTableName = "dwd_hr_survey_data_orchestra_anonymous_year"
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/hr_po_survey_data"
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/hr_po_survey_data"
 )
 # 请替换为你的CSV文件路径
 file_path = 'C:/Users/Austin J Cheng/Downloads/Survey Data Orchestra Anonymous.csv'
@@ -29,11 +29,14 @@ start = time.time()
 
 
 def write_data(df):
-    df.rename(columns=fieldMap, inplace=True)
-    df['create_date'] = create_date
-    insert_count = df.to_sql(surveyDataOrchestraAnonymousTableName, tarEngine, if_exists='append', index=False)
-    print(f"{surveyDataOrchestraAnonymousTableName}数据插入成功，受影响行数：", insert_count)
-    return insert_count
+    try:
+        df.rename(columns=fieldMap, inplace=True)
+        df['create_date'] = create_date
+        df = df.fillna('')
+        insert_count = df.to_sql(surveyDataOrchestraAnonymousTableName, tarEngine, if_exists='append', index=False)
+        print(f"{surveyDataOrchestraAnonymousTableName}数据插入成功，受影响行数：", insert_count)
+    except Exception as e1:
+        print(e1)
 
 
 def task_producer(tq):
