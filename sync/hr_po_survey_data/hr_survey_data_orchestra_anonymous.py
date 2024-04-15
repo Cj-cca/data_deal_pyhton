@@ -49,9 +49,10 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=10) as t:
     # 启动任务生产者线程
     producer_thread = threading.Thread(target=task_producer, args=(task_queue,))
     producer_thread.start()
+    time.sleep(5)
     while True:
         try:
-            item = task_queue.get(timeout=1)  # 设置超时以便在队列为空时跳出循环
+            item = task_queue.get(timeout=5)  # 设置超时以便在队列为空时跳出循环
             t.submit(write_data, item)
         except queue.Empty:
             break

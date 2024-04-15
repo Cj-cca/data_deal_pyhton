@@ -124,26 +124,51 @@ def show_run_process():
 
 
 if __name__ == '__main__':
-    srcFields = ["intCustomFieldValueID",
-                 "chRegionCode",
-                 "intCustomFieldID",
-                 "nvcCode",
-                 "nvcValue",
-                 "intSortOrder",
-                 "btIsDefaultValue",
-                 "daTerminationDate"]
-    tarFields = ["int_custom_field_value_id",
-                 "ch_region_code",
-                 "int_custom_field_id",
-                 "nvc_code",
-                 "nvc_value",
-                 "int_sort_order",
-                 "bt_is_default_value",
-                 "da_termination_date"]
-    databases = 'PwCMDM.Core'
-    tableName = 'tblCustomFieldValue'
-    sql_create(srcFields, tarFields, databases, tableName)
+    # srcFields = ["intCustomFieldValueID",
+    #              "chRegionCode",
+    #              "intCustomFieldID",
+    #              "nvcCode",
+    #              "nvcValue",
+    #              "intSortOrder",
+    #              "btIsDefaultValue",
+    #              "daTerminationDate"]
+    # tarFields = ["int_custom_field_value_id",
+    #              "ch_region_code",
+    #              "int_custom_field_id",
+    #              "nvc_code",
+    #              "nvc_value",
+    #              "int_sort_order",
+    #              "bt_is_default_value",
+    #              "da_termination_date"]
+    # databases = 'PwCMDM.Core'
+    # tableName = 'tblCustomFieldValue'
+    # sql_create(srcFields, tarFields, databases, tableName)
 
-    # notNullFieldList = """intCustomFieldValueID, chRegionCode, intCustomFieldID, nvcCode, nvcValue, intSortOrder, btIsDefaultValue, daTerminationDate"""
-    # for value in notNullFieldList.split(","):
-    #     print(convert_to_snake_case_new(value))
+    notNullFieldList = """id
+,creatorUserId
+,creatorUserName
+,creationTime
+,lastModifierUserId
+,lastModifierUserName
+,lastModificationTime
+,deletionTime
+,isDeleted
+,projectDetailUrl
+,vendorSelectionUrl
+,vendorType
+,procurementType
+,vendorCode
+,vendorName
+,requestNo
+,vendorSelectionCode
+,partItemId
+,purchaseItemId
+,vendorSelectionPlanPurchaseItemId
+,budgetLineId
+,procurementRequestNo
+,budgetCurrency
+,budgetAmount
+,budgetAmountToRMB
+,budgetAmountToHKD"""
+    for value in notNullFieldList.split(","):
+        print(convert_to_snake_case_new(value))

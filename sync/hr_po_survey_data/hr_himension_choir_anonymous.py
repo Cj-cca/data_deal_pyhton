@@ -48,7 +48,7 @@ tarEngine = create_engine(
     f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/hr_po_survey_data"
 )
 # 请替换为你的CSV文件路径
-file_path = 'C:/Users/Austin J Cheng/Downloads/Dimension Choir Anonymous.csv'
+file_path = 'C:/Users/Austin J Cheng/Downloads/Dimension_Choir_Anonymous.csv'
 chunk_size = 10000  # 根据实际情况调整
 chunks = pd.read_csv(file_path, chunksize=chunk_size)
 max_queue_size = 20

@@ -4,13 +4,21 @@ import pymysql
 import requests
 
 conn_obj = pymysql.connect(
-    host='10.158.35.241',  # MySQL服务端的IP地址
-    port=9030,  # MySQL默认PORT地址(端口号)
+    host='10.158.15.148',  # MySQL服务端的IP地址
+    port=6030,  # MySQL默认PORT地址(端口号)
     user='admin_user',  # 用户名
     password='6a!F@^ac*jBHtc7uUdxC',  # 密码,也可以简写为passwd
     database='procurement_all',  # 库名称,也可以简写为db
     charset='utf8'  # 字符编码
 )
+# conn_obj = pymysql.connect(
+#     host='10.158.16.244',  # MySQL服务端的IP地址
+#     port=9030,  # MySQL默认PORT地址(端口号)
+#     user='root',  # 用户名
+#     password='',  # 密码,也可以简写为passwd
+#     database='procurement_all',  # 库名称,也可以简写为db
+#     charset='utf8'  # 字符编码
+# )
 
 # 产生获取命令的游标对象
 # cursor = conn_obj.cursor()  # 括号内不写参数,数据是元组套元组
@@ -67,8 +75,13 @@ syncData = {
     # 6-3
     "procurement_all.ods_fin_dim_source_info_hour_ei": {
         "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/categorys",
+        "depend_on": ""},
+    "procurement_all.ods_fin_budget_to_payment_hour_ei": {
+        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/budget-to-payment",
+        "depend_on": ""},
+    "procurement_all.ods_fin_budget_to_procurement_hour_ei": {
+        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/budget-to-procurement",
         "depend_on": ""}
-
 }
 
 deleteSql = " DELETE FROM {} WHERE VendorSelectionCode IN ( "
@@ -79,7 +92,7 @@ delta = datetime.timedelta(days=1)
 search_start = (today - delta).strftime("%Y-%m-%d 00:00:00")
 search_end = today.strftime("%Y-%m-%d 23:59:59")
 
-params = {"beginTime": search_start, "endTime": search_end}
+# params = {"beginTime": search_start, "endTime": search_end}
 # params = {"beginTime": '', "endTime": ''}
 # data = requests.get(url=syncData["procurement_centre.ods_vendor_selection_plan_list"]["url"], params=params,
 #                     verify=False).text
@@ -110,7 +123,7 @@ for table in syncData:
 
     url = syncData[table]["url"]
 
-    data = requests.get(url=url, params=params, verify=False).text
+    data = requests.get(url=url, verify=False).text
     if len(data) > 0:
         # print(params, table)
         data = json.loads(data)
@@ -156,7 +169,7 @@ for table in syncData:
             res = cursor.execute(sql)
             print(f"table：{table},应入数据条数：{len(data)},实际入数据条数：{res}")
             if res < len(data):
-                print(table, json.dumps(params), len(data), res)
+                # print(table, json.dumps(params), len(data), res)
                 print(data)
         except Exception as e:
             print(e)
