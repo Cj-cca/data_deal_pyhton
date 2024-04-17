@@ -121,13 +121,14 @@ for tableName in syncData:
             target.execute(deleteSql)
             truncateFlag = False
 
-        sql = cache + sql[:-1]
-        res = target.execute(sql).rowcount
-        if res < (count % batchSize):
-            print(len(data), res, sql)
-            target.rollback()
-        else:
-            target.commit()
+        if sql != "":
+            sql = cache + sql[:-1]
+            res = target.execute(sql).rowcount
+            if res < (count % batchSize):
+                print(len(data), res, sql)
+                target.rollback()
+            else:
+                target.commit()
 
 source.close()
 target.close()

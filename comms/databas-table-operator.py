@@ -135,6 +135,14 @@ def truncateTable(engine, table_name):
     print("table truncate is complete")
 
 
+def getDatabaseValue(src_engine, src_table, tar_engine, tar_table, joint_index, field):
+    srcConn = src_engine.connect()
+    result = srcConn.execute(text(f"select count(*)as cnt from {src_table}"))
+    # 获取第一条元素的第一个字段
+    data_count = result.fetchone()[0]
+    print(f"{src_table}数据条数: {data_count}")
+
+
 if __name__ == '__main__':
     tableNameList = "ads_hr_workers_certification_day_ef,ads_hr_workers_education_day_ef,dwd_existing_staff_day_ef,dwd_existing_staff_day_st,dwd_hr_job_profiles_day_ef,dwd_hr_job_profiles_day_st,dwd_hr_organization_day_ef,dwd_hr_organization_day_st,dwd_hr_staff_transfer_from_location_day_ef,dwd_hr_staff_transfer_from_location_day_st,dwd_hr_staff_transfer_to_location_day_ef,dwd_hr_staff_transfer_to_location_day_st,dwd_hr_workers_certification_day_ef,dwd_hr_workers_certification_day_st,dwd_hr_workers_education_day_ef,dwd_hr_workers_education_day_st,dwd_new_hire_or_secondment_day_ef,dwd_new_hire_or_secondment_day_st,dwd_termination_and_transfer_day_ef,dwd_termination_and_transfer_day_st,ods_existing_staff_day_ei,ods_existing_staff_detail_day_ei,ods_hr_api_data_exception_records,ods_hr_job_profiles_day_ei,ods_hr_job_profiles_detail_day_ei,ods_hr_organization_day_ei,ods_hr_organization_detail_day_ei,ods_hr_staff_transfer_from_location_day_ei,ods_hr_staff_transfer_from_location_detail_day_ei,ods_hr_staff_transfer_to_location_day_ei,ods_hr_staff_transfer_to_location_detail_day_ei,ods_hr_table_mapping,ods_hr_task_complete_record,ods_hr_workers_certification_day_ei,ods_hr_workers_certification_detail_day_ei,ods_hr_workers_education_day_ei,ods_hr_workers_education_detail_day_ei,ods_new_hire_or_secondment_day_ei,ods_new_hire_or_secondment_detail_day_ei,ods_termination_and_transfer_day_ei,ods_termination_and_transfer_detail_day_ei"
     # orgCursor = DorisConnection.getCursor(host="10.158.16.244", user="root", password="",
