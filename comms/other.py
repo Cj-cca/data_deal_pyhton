@@ -145,30 +145,30 @@ if __name__ == '__main__':
     # sql_create(srcFields, tarFields, databases, tableName)
 
     notNullFieldList = """id
-,creatorUserId
-,creatorUserName
-,creationTime
-,lastModifierUserId
-,lastModifierUserName
-,lastModificationTime
-,deletionTime
-,isDeleted
-,projectDetailUrl
-,vendorSelectionUrl
-,vendorType
-,procurementType
-,vendorCode
-,vendorName
-,requestNo
-,vendorSelectionCode
-,partItemId
-,purchaseItemId
-,vendorSelectionPlanPurchaseItemId
-,budgetLineId
-,procurementRequestNo
-,budgetCurrency
-,budgetAmount
-,budgetAmountToRMB
-,budgetAmountToHKD"""
+,ClientCode
+,JobCode
+,Language
+,ClientSalutation
+,Email
+,TailoredMessage
+,BriefDescriptionOfTheEngagements
+,RelevantPD
+,AdditionalReaders
+,SendBy
+,SendById
+,SendDateTime
+,CreateBy
+,CreateById
+,CreateDate
+,LastModifyBy
+,LastModifyById
+,LastModifyDate
+,IsDeleted
+,RelevantPDName
+,RelationshipID
+,Status
+,AdditionalReadersName
+,FinancialYear
+,FinancialQuarter"""
     for value in notNullFieldList.split(","):
         print(convert_to_snake_case_new(value))

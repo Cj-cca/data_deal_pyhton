@@ -4,15 +4,16 @@ from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus as urlquote
 
 CURR_DATE = datetime.datetime.now().date()
+CURR_DATE_STR = f"'{CURR_DATE}'"
 SELECT_DEPENDENCE_DATE_SQL = f"""
 select IF(sum(a)=7,1,0)as r from(
-    select IF(date(max(sd_row_creation)) = {CURR_DATE}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_fact_job_hours_day_ef
-    union all select IF(date(max(sd_row_creation)) = {CURR_DATE}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_calendar_day_ef
-    union all select IF(date(max(sdrowcreation)) = {CURR_DATE}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_job_day_ei
-    union all select IF(date(max(sdrowcreation)) = {CURR_DATE}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_client_day_ei
-    union all select IF(date(max(sd_row_creation)) = {CURR_DATE}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_firm_structure_day_ef
-    union all select IF(date(max(sdrowcreation)) = {CURR_DATE}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_staff_day_ei
-    union all select IF(date(max(sd_row_creation)) = {CURR_DATE}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_staff_day_ef)as r
+    select IF(date(max(sd_row_creation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_fact_job_hours_day_ef
+    union all select IF(date(max(sd_row_creation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_calendar_day_ef
+    union all select IF(date(max(sdrowcreation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_job_day_ei
+    union all select IF(date(max(sdrowcreation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_client_day_ei
+    union all select IF(date(max(sd_row_creation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_firm_structure_day_ef
+    union all select IF(date(max(sdrowcreation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_staff_day_ei
+    union all select IF(date(max(sd_row_creation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_staff_day_ef)as r
 """
 
 SELECT_TARGET_MIN_DATE = """
@@ -219,7 +220,7 @@ SELECT client_name,
        current_debtor_code,
        current_debtor_name,
        cash_receipt AS cash_collection_amount,
-       {} as sd_row_creation,
+       '{}' as sd_row_creation,
        curdate() as etl_date
 FROM Cash
 UNION
@@ -253,7 +254,7 @@ SELECT client_name,
        current_debtor_code,
        current_debtor_name,
        ar_journal_amount       AS cash_collection_amount,
-       {} as sd_row_creation,
+       '{}' as sd_row_creation,
        curdate() as etl_date
 FROM ARJournal;
 """
@@ -271,14 +272,14 @@ def generate_target_table(table_name):
         f'mysql+pymysql://admin_user:{urlquote("6a!F@^ac*jBHtc7uUdxC")}@10.158.15.148:6030'
         f'/finance_bi')
     conn = engine.connect()
-    r = conn.execute(text(SELECT_DEPENDENCE_DATE_SQL))
-    dependence_date_flag = r.fetchone()[0]
-    if dependence_date_flag == 1:
+    cursor = conn.connection.cursor()
+    r = cursor.execute(SELECT_DEPENDENCE_DATE_SQL)
+    if r == 1:
         print("依赖表数据日期为最新日期，开始执行")
         truncateTable(engine, table_name)
-        min_time_result = conn.execute(text(SELECT_TARGET_MIN_DATE))
-        min_time = min_time_result.fetchone()[0]
-        conn.execute(text(INSERT_TARGET_SQL.format(min_time, min_time)))
+        min_time = cursor.execute(SELECT_TARGET_MIN_DATE)
+        cursor.execute(INSERT_TARGET_SQL.format(min_time, min_time))
+        print("sql执行成功")
         conn.commit()
         conn.close()
         engine.dispose()

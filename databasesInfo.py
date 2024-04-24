@@ -52,3 +52,9 @@
 
 
 #austin.j.cheng@cn.pwc.com	oMY#s1H2k^JEKlVO
+
+
+# SQL Server:  CNCSQLPWV5015,1800
+# DB: ClientFeedbackAdv
+# User: clientfeedback_dp_reader   (read permission for this DB)
+# password: mE5cN6qF4cL9u#F5fA2iG1bH8rX4zZ

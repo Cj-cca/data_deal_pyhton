@@ -37,8 +37,11 @@ delta = datetime.timedelta(days=1)
 search_start = (createTime - delta).strftime("%Y-%m-%dT00:00:00")
 search_end = createTime.strftime("%Y-%m-%dT00:00:00")
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/procurement_all"
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/procurement_all"
 )
+# tarEngine = create_engine(
+#     f"mysql+pymysql://root:@10.158.16.244:9030/procurement_all"
+# )
 
 
 def getToken(url, app_code, secret_key):
@@ -123,8 +126,13 @@ def deal_dwd(data_frame):
 
 if __name__ == '__main__':
     getTokenUrl = "https://search.asia.pwcinternal.com/api/auth/token"
+    # pro
     appCode = "DataWarehouse"
     secretKey = "7631295a14c044a2a52e193b880f400f"
+
+    # uat
+    # appCode = "DataWarehouse"
+    # secretKey = "6a569ee03a724c748d62c910c4a3ffe4"
     requestToken = getToken(getTokenUrl, appCode, secretKey)
     data_url = "https://search.asia.pwcinternal.com/api/open-api/search"
     filter1 = {
@@ -142,8 +150,8 @@ if __name__ == '__main__':
         ]
     }
     filter_all = [filter1, filter2]
-    syncApiData(requestToken, data_url, filters=filter_all)
-    # syncApiData(requestToken, data_url)
+    # syncApiData(requestToken, data_url, filters=filter_all)
+    syncApiData(requestToken, data_url)
     print(
         f"数据同步完成,数据总条数：{totalDataCount},请求到的数据条数{totalRequestDataCount},实际插入数据条数：{totalInsertCount},请求数据最长时间：{maxCostTime},平均请求时间：{avgCostTime}")
     totalInsertCount = 0
