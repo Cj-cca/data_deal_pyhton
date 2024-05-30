@@ -58,3 +58,17 @@
 # DB: ClientFeedbackAdv
 # User: clientfeedback_dp_reader   (read permission for this DB)
 # password: mE5cN6qF4cL9u#F5fA2iG1bH8rX4zZ
+
+# dolphin server list：
+# CNCWEBPLV5042  10.158.35.241
+# CNCWEBPLV5043  10.158.35.242
+# CNCWEBPLV5044  10.158.35.243
+# CNCWEBPLV5045  10.158.35.244
+# CNCWEBPLV5058  10.158.15.24
+
+
+# Assurance DB
+# Server:   CNCSQLPWV2005,1800
+# DBName:   PwCMDM_HKReport
+# Account:    PwCMDM_HKReport_Replication
+# password: 6G1kc72r74pEqCx2

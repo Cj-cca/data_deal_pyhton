@@ -1,185 +1,175 @@
-import pymysql
-import pandas as pd
-import numpy as np
-import sys
-import calendar
-from datetime import datetime
 import time
-import pymssql
-import pyodbc
+import datetime
 from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus as urlquote
-import warnings
 
-warnings.filterwarnings("ignore")
+CURR_DATE = datetime.datetime.now().date()
+CURR_DATE_STR = f"'{CURR_DATE}'"
+SELECT_DEPENDENCE_DATE_SQL = f"""
+select IF(sum(a)=6,1,0)as r from(
+select IF(date(max(sdrowcreation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_job_day_ei
+union all select IF(date(max(sdrowcreation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_client_day_ei
+union all select IF(date(max(sd_row_creation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_firm_structure_day_ef
+union all select IF(date(max(sd_row_creation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_calendar_day_ef
+union all select IF(date(max(sdrowcreation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_current_staff_day_ei
+union all select IF(date(max(sd_row_creation)) = {CURR_DATE_STR}, 1, 0)as a from finance_bi.ods_finance_dw_tbl_dim_exchange_rate_day_ef)as r
+"""
 
-ETL_TIME = "${batch_date_ymd} ${batch_date_hms}"
+SELECT_TARGET_MIN_DATE = """
+select min(max_time)as min_time from(
+select max(sdrowcreation) as max_time from finance_bi.ods_finance_dw_tbl_dim_current_job_day_ei
+union all select max(sdrowcreation) as max_time from finance_bi.ods_finance_dw_tbl_dim_current_client_day_ei
+union all select max(sd_row_creation) as max_time from finance_bi.ods_finance_dw_tbl_dim_firm_structure_day_ef
+union all select max(sd_row_creation) as max_time from finance_bi.ods_finance_dw_tbl_dim_calendar_day_ef
+union all select max(sdrowcreation) as max_time from finance_bi.ods_finance_dw_tbl_dim_current_staff_day_ei
+union all select max(sd_row_creation) as max_time from finance_bi.ods_finance_dw_tbl_dim_exchange_rate_day_ef
+)as r
+"""
 
-
-def run(sql_main, srcConn):
-    print("开始创建连接")
-    connection = pymysql.connect(
-        host="10.157.112.167",
-        port=3306,
-        user="oats_talentlink",
-        password="Fo@tI%Vwc(AO",
-        db="AEL",
-        charset="utf8",
+INSERT_TARGET_SQL = """
+insert into finance_bi.dwd_finance_revenue_data_day_ef(job_code, client_code, fiscal_year_name, month_end, job_partner, job_partner_staff_code, job_partner_staff_ou_code, uhc_name, uhc_prid, client_name, job_desc, job_office_code, product, job_ou_code, job_los, hours_in_revenue, revenue_in_hkd, em_in_hkd, gross_target_value_in_hkd, sd_row_creation, etl_time)
+WITH APC
+AS (
+    SELECT CONCAT('CN-', int_assgnmt_id) AS current_job_key,
+               sd_per_end_date,
+               int_assgnmt_id,
+               ch_asg_ptr_staff_code,
+               ch_asg_mgr_staff_code
+    FROM pwc_mdm.ods_ipower_tbl_assg_period_close_cn_day_ei
+    where sd_per_end_date >= (select min(date_key) from finance_bi.ods_finance_dw_tbl_fact_revenue_day_ef
+    where fiscal_year_key >= (SELECT MAX(fiscal_year_key) FROM finance_bi.ods_finance_dw_tbl_fact_revenue_day_ef)-1)
+    UNION ALL
+    SELECT CONCAT('HK-', int_assgnmt_id) AS current_job_key,
+               sd_per_end_date,
+               int_assgnmt_id,
+               ch_asg_ptr_staff_code,
+               ch_asg_mgr_staff_code
+        FROM pwc_mdm.ods_ipower_tbl_assg_period_close_hk_day_ei
+    where sd_per_end_date >= (select min(date_key) from finance_bi.ods_finance_dw_tbl_fact_revenue_day_ef
+    where fiscal_year_key >= (SELECT MAX(fiscal_year_key) FROM finance_bi.ods_finance_dw_tbl_fact_revenue_day_ef)-1)
+)
+SELECT
+    CJ.job_code,
+    Rev.client_key AS client_code,
+    Cal.fiscal_year_name,
+    Cal.month_end,
+    JP.staff_name AS job_partner,
+    JP.regional_staff_code AS job_partner_staff_code,
+    JP.regional_staff_ou_code AS job_partner_staff_ou_code,
+    CC.uhc_name,
+    CC.uhc_prid,
+    CC.client_name,
+    CJ.job_desc,
+    CJ.job_office_code,
+    CJ.product,
+    JobFS.ou_code AS job_ou_code,
+    JobFS.los AS job_los,
+    SUM(Rev.hours_in_revenue) AS hours_in_revenue,
+    SUM(round(Rev.revenue,13) * round(HKD.reporting_exchange_rate,13)) AS revenue_in_hkd,
+    SUM(round(Rev.em_in_revenue,13) * round(HKD.reporting_exchange_rate,13)) AS em_in_hkd,
+    SUM(round(Rev.gross_target_value_in_revenue,13) * round(HKD.reporting_exchange_rate,13)) AS gross_target_value_in_hkd,
+    MAX(Rev.sd_row_creation) AS sd_row_creation,
+    curdate() as etl_time,
+    '{}' as sd_row_real_creation
+FROM
+    (select * from finance_bi.ods_finance_dw_tbl_fact_revenue_day_ef
+    where fiscal_year_key >= (SELECT MAX(fiscal_year_key) FROM finance_bi.ods_finance_dw_tbl_fact_revenue_day_ef)-1) AS Rev
+    INNER JOIN finance_bi.ods_finance_dw_tbl_dim_current_job_day_ei AS CJ
+    ON Rev.current_job_key = CJ.current_job_key
+    INNER JOIN finance_bi.ods_finance_dw_tbl_dim_current_client_day_ei AS CC
+    ON Rev.client_key = CC.client_code
+    INNER JOIN finance_bi.ods_finance_dw_tbl_dim_firm_structure_day_ef AS JobFS
+    ON Rev.cy_job_ou_key = JobFS.ou_key
+    LEFT JOIN finance_bi.ods_finance_dw_tbl_dim_calendar_day_ef AS Cal
+    ON Rev.date_key = Cal.date_key
+    LEFT JOIN APC AS APC
+    ON Rev.date_key = APC.sd_per_end_date
+        AND Rev.current_job_key = APC.current_job_key
+    LEFT JOIN finance_bi.ods_finance_dw_tbl_dim_current_staff_day_ei AS JP
+    ON APC.ch_asg_ptr_staff_code = JP.staff_code
+    LEFT JOIN finance_bi.ods_finance_dw_tbl_dim_exchange_rate_day_ef AS HKD
+    ON Rev.exchange_rate_key = HKD.exchange_rate_key
+        AND HKD.reporting_currency_code = 'HKD'
+WHERE
+    (
+        JP.regional_staff_los_code like '%ADV%'
+        OR (
+            JP.regional_staff_los_code like '%OFS%'
+            AND JP.regional_staff_sub_los_code like '%48%'
+        )
     )
-    cursor = connection.cursor()
-    print("连接创建完成")
-    pd_src = pd.read_sql(sql_main, srcConn)
-    print("数据读取成功，开始同步数据")
-    pd_src["ETL_TIME"] = ETL_TIME
-    pd_src[
-        [
-            "MONTH_END",
-            "JOB_TERRITORY_CODE",
-            "JOB_REGION",
-            "CURRENT_JOB_LOS",
-            "CURRENT_JOB_SUBLOS",
-            "CURRENT_JOB_BU",
-            "CURRENT_JOB_OU_CODE",
-            "CURRENT_JOB_OU",
-            "CLIENT_CODE",
-            "CLIENT_NAME",
-            "JOB_CODE",
-            "JOB_OFFICE_CODE",
-            "JOB_DESC",
-            "CURRENT_JOB_PARTNER_STAFF_CODE",
-            "CURRENT_JOB_PARTNER",
-            "CURRENT_JOB_MANAGER_STAFF_CODE",
-            "CURRENT_JOB_MANAGER",
-            "CURRENT_BILL_PARTNER_STAFF_CODE",
-            "CURRENT_BILL_PARTNER",
-            "CURRENT_BILL_MANAGER_STAFF_CODE",
-            "CURRENT_BILL_MANAGER",
-            "CURRENT_DEBTOR_CODE",
-            "CURRENT_DEBTOR_NAME",
-            "IS_CNHK_INTER_TERRITORY_BILLING",
-            "BILL_DATE",
-            "BILL_NO_WITH_OFFICE_CODE",
-            "BILL_AGING",
-            "AR",
-            "AR_PROVISION",
-            "POTENTIAL_AR_PROVISION_IN_CURRENT_MONTH",
-            "POTENTIAL_AR_PROVISION_IN_NEXT_MONTH",
-            "POTENTIAL_AR_PROVISION_IN_THE_MONTH_AFTER_NEXT",
-            "SD_ROW_CREATION",
-            "ETL_TIME",
-        ]
-    ].replace([pd.NA, np.nan], None, inplace=True)
-    # pd_src["BILL_DATE"] = pd_src["BILL_DATE"].dt.strftime("%Y-%m-%d %H:%M:%S")
-    # pd_src["BILL_DATE"] = pd_src["BILL_DATE"].fillna(pd.NaT)
-    # print(pd_src[["BILL_DATE"]])
-    # sys.exit()
-    print("read table success")
-    try:
-        for index, row in pd_src.iterrows():
-            # oppid = row["OPP_ID"]
-            # if row["OPP_ID"] != row["OPP_ID"]:
-            #     oppid = None
-            if str(row["BILL_DATE"]) in ("NaT","None"):
-                BILL_DATE_FIN = "NULL"
-            else:
-                BILL_DATE_FIN = '"' + str(row["BILL_DATE"]) + '"'
-            query = f"""
-			INSERT INTO AEL.DWD_FINACE_ONE_ADVISORY_OPERATIONS_DAY_EF (
-				MONTH_END,JOB_TERRITORY_CODE,JOB_REGION,CURRENT_JOB_LOS,CURRENT_JOB_SUBLOS
-                ,CURRENT_JOB_BU,CURRENT_JOB_OU_CODE,CURRENT_JOB_OU,CLIENT_CODE,CLIENT_NAME
-                ,JOB_CODE,JOB_OFFICE_CODE,JOB_DESC,CURRENT_JOB_PARTNER_STAFF_CODE,CURRENT_JOB_PARTNER
-                ,CURRENT_JOB_MANAGER_STAFF_CODE,CURRENT_JOB_MANAGER,CURRENT_BILL_PARTNER_STAFF_CODE,CURRENT_BILL_PARTNER,CURRENT_BILL_MANAGER_STAFF_CODE
-                ,CURRENT_BILL_MANAGER,CURRENT_DEBTOR_CODE,CURRENT_DEBTOR_NAME,IS_CNHK_INTER_TERRITORY_BILLING,BILL_DATE
-                ,BILL_NO_WITH_OFFICE_CODE,BILL_AGING,AR,AR_PROVISION,POTENTIAL_AR_PROVISION_IN_CURRENT_MONTH
-                ,POTENTIAL_AR_PROVISION_IN_NEXT_MONTH,POTENTIAL_AR_PROVISION_IN_THE_MONTH_AFTER_NEXT,SD_ROW_CREATION,ETL_TIME
-			)
-			VALUES (
-				"{row["MONTH_END"]}", "{row["JOB_TERRITORY_CODE"]}", "{row["JOB_REGION"]}", "{row["CURRENT_JOB_LOS"]}"
-                , "{row["CURRENT_JOB_SUBLOS"]}", "{row["CURRENT_JOB_BU"]}", "{row["CURRENT_JOB_OU_CODE"]}", "{row["CURRENT_JOB_OU"]}", "{row["CLIENT_CODE"]}", "{row["CLIENT_NAME"]}"
-				,"{row["JOB_CODE"]}", "{row["JOB_OFFICE_CODE"]}", "{row["JOB_DESC"]}", "{row["CURRENT_JOB_PARTNER_STAFF_CODE"]}", "{row["CURRENT_JOB_PARTNER"]}", "{row["CURRENT_JOB_MANAGER_STAFF_CODE"]}"
-                , "{row["CURRENT_JOB_MANAGER"]}", "{row["CURRENT_BILL_PARTNER_STAFF_CODE"]}", "{row["CURRENT_BILL_PARTNER"]}", "{row["CURRENT_BILL_MANAGER_STAFF_CODE"]}"
-				,"{row["CURRENT_BILL_MANAGER"]}", "{row["CURRENT_DEBTOR_CODE"]}", "{row["CURRENT_DEBTOR_NAME"]}", "{row["IS_CNHK_INTER_TERRITORY_BILLING"]}", {BILL_DATE_FIN}
-                , "{row["BILL_NO_WITH_OFFICE_CODE"]}", "{row["BILL_AGING"]}", "{row["AR"]}", "{row["AR_PROVISION"]}", "{row["POTENTIAL_AR_PROVISION_IN_CURRENT_MONTH"]}"
-				,"{row["POTENTIAL_AR_PROVISION_IN_NEXT_MONTH"]}", "{row["POTENTIAL_AR_PROVISION_IN_THE_MONTH_AFTER_NEXT"]}", "{row["SD_ROW_CREATION"]}", "{row["ETL_TIME"]}")
-			"""
-            # print(query)
-            # sys.exit()
-            cursor.execute(query)
-    except Exception as e:
-        print(e, "   ", row["JOB_TERRITORY_CODE"])
-        print(query)
-    finally:
-        connection.commit()
-        print("数据插入成功")
-        cursor.close()
-        connection.close()
+GROUP BY
+    Cal.fiscal_year_name,
+    Cal.month_end,
+    JP.staff_name,
+    JP.regional_staff_code,
+    JP.regional_staff_ou_code,
+    CC.uhc_name,
+    CC.uhc_prid,
+    Rev.client_key,
+    CC.client_name,
+    CJ.job_code,
+    CJ.job_desc,
+    CJ.job_office_code,
+    CJ.product,
+    JobFS.ou_code,
+    JobFS.los
+HAVING
+    NOT(
+        SUM(Rev.revenue) = 0
+        AND SUM(Rev.em_in_revenue) = 0
+        AND SUM(Rev.gross_target_value_in_revenue) = 0
+        AND SUM(Rev.hours_in_revenue) = 0
+    );
+"""
 
 
-if __name__ == "__main__":
+def truncateTable(engine, table_name):
+    tarConn = engine.connect()
+    tarConn.execute(text(f"truncate table {table_name}"))
+    tarConn.close()
+    print("table truncate is complete")
+
+
+def generate_target_table(table_name):
+    engine = create_engine(
+        f'mysql+pymysql://admin_user:{urlquote("6a!F@^ac*jBHtc7uUdxC")}@10.158.15.148:6030'
+        f'/finance_bi')
+    conn = engine.connect()
+    r = conn.execute(text(SELECT_DEPENDENCE_DATE_SQL))
+    dependence_date_flag = r.fetchone()[0]
+    if dependence_date_flag == 1:
+        print("依赖表数据日期为最新日期，开始执行")
+        truncateTable(engine, table_name)
+        min_time_result = conn.execute(text(SELECT_TARGET_MIN_DATE))
+        min_time = min_time_result.fetchone()[0]
+        conn.execute(text(INSERT_TARGET_SQL.format(min_time)))
+        print("sql执行成功")
+        conn.close()
+        engine.dispose()
+    else:
+        if CURR_DATE == datetime.datetime.now().date():
+            print(f"依赖表有数据未更新，等待依赖表数据更新，当前时间为{datetime.datetime.now()}")
+            conn.close()
+            engine.dispose()
+            time.sleep(1800)
+            generate_target_table(table_name)
+
+
+if __name__ == '__main__':
+    targetTableName = "dwd_finance_revenue_data_day_ef"
     srcEngine = create_engine(
-        f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/finance_bi"
-    )
-    print("任务开始执行")
+        f'mysql+pymysql://admin_user:{urlquote("6a!F@^ac*jBHtc7uUdxC")}@10.158.15.148:6030'
+        f'/finance_bi')
     srcConn = srcEngine.connect()
-    result = srcConn.execute(
-        text(
-            f"""select count(1) cn from finance_bi.dwd_finace_one_advisory_operations_day_ef
-            """
-        )
-    )
+    result_1 = srcConn.execute(text(
+        f"select IF(date(sd_row_real_creation) = {CURR_DATE_STR}, 1, 0)as r from {targetTableName} limit 1"))
     # 获取第一条元素的第一个字段
-    data_count = result.fetchone()[0]
-    print(data_count)
-    # data_count = 100
-    gap = 5000
-    for i in range(0, data_count, gap):
-        sql_main = text(
-            f"""select 
-					month_end as MONTH_END,
-                    coalesce(trim(job_territory_code),'') as JOB_TERRITORY_CODE,
-                    coalesce(trim(job_region),'') as JOB_REGION,
-                    coalesce(trim(current_job_los),'') as CURRENT_JOB_LOS,
-                    coalesce(trim(current_job_sublos),'') as CURRENT_JOB_SUBLOS,
-                    coalesce(trim(current_job_bu),'') as CURRENT_JOB_BU,
-                    coalesce(trim(current_job_ou_code),'') as CURRENT_JOB_OU_CODE,
-                    coalesce(trim(current_job_ou),'') as CURRENT_JOB_OU,
-                    coalesce(trim(client_code),'') as CLIENT_CODE,
-                    coalesce(trim(replace(client_name,'"',"'")),'') as CLIENT_NAME,
-                    coalesce(trim(job_code),'') as JOB_CODE,
-                    coalesce(trim(job_office_code),'') as JOB_OFFICE_CODE,
-                    coalesce(trim(replace(job_desc,'"',"'")),'') as JOB_DESC,
-                    coalesce(trim(current_job_partner_staff_code),'') as CURRENT_JOB_PARTNER_STAFF_CODE,
-                    coalesce(trim(current_job_partner),'') as CURRENT_JOB_PARTNER,
-                    coalesce(trim(current_job_manager_staff_code),'') as CURRENT_JOB_MANAGER_STAFF_CODE,
-                    coalesce(trim(current_job_manager),'') as CURRENT_JOB_MANAGER,
-                    coalesce(trim(current_bill_partner_staff_code),'') as CURRENT_BILL_PARTNER_STAFF_CODE,
-                    coalesce(trim(current_bill_partner),'') as CURRENT_BILL_PARTNER,
-                    coalesce(trim(current_bill_manager_staff_code),'') as CURRENT_BILL_MANAGER_STAFF_CODE,
-                    coalesce(trim(current_bill_manager),'') as CURRENT_BILL_MANAGER,
-                    coalesce(trim(current_debtor_code),'') as CURRENT_DEBTOR_CODE,
-                    coalesce(trim(replace(current_debtor_name,'"',"'")),'') as CURRENT_DEBTOR_NAME,
-                    coalesce(trim(is_cnhk_inter_territory_billing),'') as IS_CNHK_INTER_TERRITORY_BILLING,
-                    bill_date as BILL_DATE,
-                    coalesce(trim(bill_no_with_office_code),'') as BILL_NO_WITH_OFFICE_CODE,
-                    coalesce(bill_aging, 0) as BILL_AGING,
-                    coalesce(trim(ar),'') as AR,
-                    coalesce(trim(ar_provision),'') as AR_PROVISION,
-                    coalesce(trim(potential_ar_provision_in_current_month),'') as POTENTIAL_AR_PROVISION_IN_CURRENT_MONTH,
-                    coalesce(trim(potential_ar_provision_in_next_month),'') as POTENTIAL_AR_PROVISION_IN_NEXT_MONTH,
-                    coalesce(trim(potential_ar_provision_in_the_month_after_next),'') as POTENTIAL_AR_PROVISION_IN_THE_MONTH_AFTER_NEXT,
-                    sdrowcreation as SD_ROW_CREATION,
-                    coalesce(trim(etl_time),'') as ETL_TIME
-					from finance_bi.dwd_finace_one_advisory_operations_day_ef 
-					order by MONTH_END,JOB_TERRITORY_CODE,JOB_REGION,CURRENT_JOB_LOS,CURRENT_JOB_SUBLOS
-                ,CURRENT_JOB_BU,CURRENT_JOB_OU_CODE,CURRENT_JOB_OU,CLIENT_CODE,CLIENT_NAME
-                ,JOB_CODE,JOB_OFFICE_CODE,JOB_DESC,CURRENT_JOB_PARTNER_STAFF_CODE,CURRENT_JOB_PARTNER
-                ,CURRENT_JOB_MANAGER_STAFF_CODE,CURRENT_JOB_MANAGER,CURRENT_BILL_PARTNER_STAFF_CODE,CURRENT_BILL_PARTNER,CURRENT_BILL_MANAGER_STAFF_CODE
-					 limit {i},5000
-			;"""
-        )
-        print(f"开始执行当前批次数据  {i}")
-        run(sql_main, srcConn)
-        time.sleep(10)
-    srcConn.close()
-    srcEngine.dispose()
-    print("数据同步完成")
+    generate_target_table(targetTableName)
+    # newestDateFlag = result_1.fetchone()[0]
+    # srcConn.close()
+    # if newestDateFlag == 0:
+    #     print("数据不是最新日期，任务开始执行")
+    #     generate_target_table(targetTableName)
+    # else:
+    #     print("数据日期为最新日期，无需执行")

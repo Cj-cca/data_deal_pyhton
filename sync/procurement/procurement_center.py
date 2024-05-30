@@ -28,60 +28,60 @@ cursor = conn_obj.cursor(
 
 # uat环境
 syncData = {
-    # 1-1
-    "procurement_all.ods_fin_procurement_project_data_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-overall-list",
-        "depend_on": ""},
-    # 1-2
-    "procurement_all.ods_fin_project_plan_list_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-plan-list",
-        "depend_on": ""},
-    # 1-3
-    "procurement_all.ods_fin_project_plan_part_breakdow_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-plan-part-breakdown",
-        "depend_on": ""},
-    # 1-4
-    "procurement_all.ods_fin_project_plan_budget_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-plan-budget",
-        "depend_on": ""},
-    # 2-1
-    "procurement_all.ods_fin_vendor_selection_plan_list_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vendor-selection-plan-list",
-        "depend_on": ""},
-    # 2-2
-    "procurement_all.ods_fin_vs_plan_part_breakdown_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vs-plan-part-breakdown",
-        "depend_on": ""},
-    # 2-3
-    "procurement_all.ods_fin_vendor_selection_result_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vendor-selection-result",
-        "depend_on": ""},
-    # 2-4
-    "procurement_all.ods_fin_vendor_selection_result_foreign_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vendor-selection-result-foreign",
-        "depend_on": ""},
-    # 2-5
+    # # 1-1
+    # "procurement_all.ods_fin_procurement_project_data_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-overall-list",
+    #     "depend_on": ""},
+    # # 1-2
+    # "procurement_all.ods_fin_project_plan_list_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-plan-list",
+    #     "depend_on": ""},
+    # # 1-3
+    # "procurement_all.ods_fin_project_plan_part_breakdow_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-plan-part-breakdown",
+    #     "depend_on": ""},
+    # # 1-4
+    # "procurement_all.ods_fin_project_plan_budget_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/project-plan-budget",
+    #     "depend_on": ""},
+    # # 2-1
+    # "procurement_all.ods_fin_vendor_selection_plan_list_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vendor-selection-plan-list",
+    #     "depend_on": ""},
+    # # 2-2
+    # "procurement_all.ods_fin_vs_plan_part_breakdown_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vs-plan-part-breakdown",
+    #     "depend_on": ""},
+    # # 2-3
+    # "procurement_all.ods_fin_vendor_selection_result_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vendor-selection-result",
+    #     "depend_on": ""},
+    # # 2-4
+    # "procurement_all.ods_fin_vendor_selection_result_foreign_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vendor-selection-result-foreign",
+    #     "depend_on": ""},
+    # # 2-5
     "procurement_all.ods_fin_vs_to_procurement_hour_ei": {
         "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/vendor-selection-procurement",
-        "depend_on": ""},
-    # 6-1
-    "procurement_all.ods_fin_access_control_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/access-control",
-        "depend_on": ""},
-    # 6-2
-    "procurement_all.ods_fin_fy_exchange_rate_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/fy-exchange-rate",
-        "depend_on": ""},
-    # 6-3
-    "procurement_all.ods_fin_dim_source_info_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/categorys",
-        "depend_on": ""},
-    "procurement_all.ods_fin_budget_to_payment_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/budget-to-payment",
-        "depend_on": ""},
-    "procurement_all.ods_fin_budget_to_procurement_hour_ei": {
-        "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/budget-to-procurement",
         "depend_on": ""}
+    # # 6-1
+    # "procurement_all.ods_fin_access_control_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/access-control",
+    #     "depend_on": ""},
+    # # 6-2
+    # "procurement_all.ods_fin_fy_exchange_rate_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/fy-exchange-rate",
+    #     "depend_on": ""},
+    # # 6-3
+    # "procurement_all.ods_fin_dim_source_info_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/categorys",
+    #     "depend_on": ""},
+    # "procurement_all.ods_fin_budget_to_payment_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/budget-to-payment",
+    #     "depend_on": ""},
+    # "procurement_all.ods_fin_budget_to_procurement_hour_ei": {
+    #     "url": "https://procurementcentre.asia.pwcinternal.com/dataasync/api/data-sync/budget-to-procurement",
+    #     "depend_on": ""}
 }
 
 deleteSql = " DELETE FROM {} WHERE VendorSelectionCode IN ( "
