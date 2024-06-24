@@ -84,6 +84,10 @@ def syncApiData(query_url, page_index=1):
         print(f"======page {page_index} data sync complete, cost {round(time.time() - start, 2)}s======")
     else:
         print("请求失败，状态码：", response.status_code)
+        if page_index < 4:
+            syncApiData(query_url, page_index + 1)
+        else:
+            raise Exception("请求失败，状态码：", response.status_code)
 
 
 def deal_ods_detail(response, query_url, page_index=1):
@@ -140,8 +144,8 @@ def truncate_table(table_name):
 # '2019-10-27'
 if __name__ == '__main__':
     apiType = "jobs"
-    startTimeStr = '2024-05-27'
-    endTimeStr = '2024-05-29'
+    startTimeStr = ''
+    endTimeStr = ''
     date_gap = 1
     # truncate_table(tarTableNameOds)
     APIDeltaUrl = "https://cncapppwv5008.asia.pwcinternal.com/talentlinkapi/v2/{apiType}/delta/{apiRequestStartTime}/{apiRequestEndTime}"

@@ -12,41 +12,8 @@ from sqlalchemy import text
 from urllib.parse import quote_plus as urlquote
 
 notNullField = []
-resultField = ['Data.BKG_ID',
-               'Data.BKG_START',
-               'Data.BKG_END',
-               'Data.BKG_TIME',
-               'Data.BKG_JOB_ID',
-               'Data.BKG_JOB_ID_DESCR',
-               'Data.BKGJobCode',
-               'Data.BKGEmployeeAltID',
-               'Data.BKGClientCode',
-               'Data.BKGClientName',
-               'Data.BKG_LOADING',
-               'Data.BKG_RES_ID',
-               'Data.BKG_STATUS',
-               'Data.BKG_DELETED',
-               'Data.BKGLocalEmployeeID',
-               'Data.BKG_CHANGE_DATE',
-               'Data.BKG_GHOST']
-
-fieldMapping = {'Data.BKG_ID': 'bkg_id',
-                'Data.BKG_START': 'bkg_start',
-                'Data.BKG_END': 'bkg_end',
-                'Data.BKG_TIME': 'bkg_time',
-                'Data.BKG_JOB_ID': 'bkg_job_id',
-                'Data.BKG_JOB_ID_DESCR': 'bkg_job_id_descr',
-                'Data.BKGJobCode': 'bkg_job_code',
-                'Data.BKGEmployeeAltID': 'bkg_employee_alt_id',
-                'Data.BKGClientCode': 'bkg_client_code',
-                'Data.BKGClientName': 'bkg_client_name',
-                'Data.BKG_LOADING': 'bkg_loading',
-                'Data.BKG_RES_ID': 'bkg_res_id',
-                'Data.BKG_STATUS': 'bkg_status',
-                'Data.BKG_DELETED': 'bkg_deleted',
-                'Data.BKGLocalEmployeeID': 'bkg_local_employee_id',
-                'Data.BKG_CHANGE_DATE': 'bkg_change_date',
-                'Data.BKG_GHOST': 'bkg_ghost'}
+resultField = ['deleted_entity_id']
+fieldMapping = {'deleted_entity_id': 'bkg_id'}
 
 resultColumn_ods = ['page_index',
                     'create_time',
@@ -65,8 +32,8 @@ resultColumn_ods_detail = ['batch_id',
                            ]
 
 tarExceptionDataTable = ''
-tarTableNameDwd = "ods_tbl_talent_link_bookings_day_ei"
-tarTableNameOds = "ods_tbl_talent_link_bookings_day_ei"
+tarTableNameDwd = "ods_tbl_talent_link_bookings_deleted_realtime_day_ei"
+tarTableNameOds = "ods_tbl_talent_link_bookings_deleted_realtime_day_ei"
 tarTableNameOdsDetail = ""
 
 tarEngine = create_engine(
@@ -135,15 +102,14 @@ def deal_ods(response, query_url, page_index):
 
 
 def deal_dwd(response):
-    data_frame = pandas.json_normalize(response["result"], record_path=["values"])
+    data_frame = pandas.json_normalize(response['result'], record_path=["deleted_entities"])
     if data_frame.size == 0:
         print("没有数据")
         return
-    result_dataframe = data_frame[resultField]
-    result_dataframe.rename(columns=fieldMapping, inplace=True)
-    # result_dataframe["etl_date"] = createTime
-    result_dataframe.loc[:, "etl_date"] = createTime
-    result_dataframe = result_dataframe.fillna('')
+    data_frame = data_frame[resultField]
+    data_frame.rename(columns=fieldMapping, inplace=True)
+    data_frame["etl_time"] = createTime
+    result_dataframe = data_frame.fillna('')
     insert_count = -1
     try:
         insert_count = result_dataframe.to_sql(tarTableNameOds, tarEngine, if_exists='append', index=False)
@@ -153,20 +119,33 @@ def deal_dwd(response):
     print(f"{tarTableNameOds}数据插入成功，总数据条数: {len(result_dataframe)}，插入行数：{insert_count}")
 
 
+def truncate_table(table_name):
+    tar_conn = tarEngine.connect()
+    tar_conn.execute(text(f"truncate table {table_name}"))
+    tar_conn.close()
+    print("table truncate is complete")
+
+
+# 2024-04-20，2024-04-24
+# '2019-10-27'
 if __name__ == '__main__':
     apiType = "bookings"
-    now_time = datetime.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+    startTimeStr = '2024-06-17'
+    endTimeStr = '2024-06-24'
+    date_gap = 1
+    # truncate_table(tarTableNameOds)
     # 增量同步数据
-    APIDeltaUrl = "https://cncapppwv5008.asia.pwcinternal.com/talentlinkapi/v2/{apiType}/delta/{apiRequestStartTime}/{apiRequestEndTime}"
-    startTime = now_time - datetime.timedelta(days=3)
-    endTime = now_time
+    APIDeltaUrl = "https://cncapppwv5008.asia.pwcinternal.com/talentlinkapi/v2/{apiType}/delta/deleted-ids/{apiRequestStartTime}/{apiRequestEndTime}"
+    startTime = datetime.datetime.strptime(startTimeStr, "%Y-%m-%d").date()
+    endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%d").date()
     while startTime < endTime:
         tmpStartTime = startTime
-        tmpEndTime = tmpStartTime + datetime.timedelta(hours=4) if (tmpStartTime + datetime.timedelta(
-            hours=4)) < endTime else endTime
-        URL = APIDeltaUrl.format(apiType=apiType, apiRequestStartTime=tmpStartTime.strftime('%Y-%m-%dT%H:%M:%S'),
-                                 apiRequestEndTime=tmpEndTime.strftime('%Y-%m-%dT%H:%M:%S'))
+        tmpEndTime = tmpStartTime + datetime.timedelta(days=date_gap) if (tmpStartTime + datetime.timedelta(
+            days=date_gap)) < endTime else endTime
+        createTime = tmpEndTime
+        URL = APIDeltaUrl.format(apiType=apiType, apiRequestStartTime=tmpStartTime,
+                                 apiRequestEndTime=tmpEndTime)
         print("当前批次数据同步，开始时间：", tmpStartTime, "，结束时间：", tmpEndTime)
         syncApiData(URL)
-        startTime += datetime.timedelta(hours=4)
+        startTime += datetime.timedelta(days=date_gap)
     print(f"data sync complete, max cost time is {maxCostTime}, avg cost time is {avgCostTime}")

@@ -46,7 +46,7 @@ HRStaffTransferFromLocationTableNameOds = "ods_hr_staff_transfer_from_location_d
 HRStaffTransferFromLocationTableNameOdsDetail = "ods_hr_staff_transfer_from_location_detail_day_ei"
 
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage"
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/work_day_stage"
 )
 batchID = 0
 maxCostTime = 0
@@ -249,8 +249,8 @@ def api_field_check(dataframe, field_exception_type):
 
 
 if __name__ == '__main__':
-    startTimeStr = ''
-    endTimeStr = ''
+    startTimeStr = '2024-06-17T00:00:00'
+    endTimeStr = '2024-06-18T00:00:00'
     user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
     pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
     # transfer_from_location_url = "https://pwc-dev.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/transfer_from"
@@ -262,8 +262,7 @@ if __name__ == '__main__':
         endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%dT%H:%M:%S")
         while startTime < endTime:
             tmpStartTime = startTime
-            tmpEndTime = tmpStartTime + datetime.timedelta(days=1) if (tmpStartTime + datetime.timedelta(
-                days=1)) < endTime else endTime
+            tmpEndTime = tmpStartTime + datetime.timedelta(days=1)
             createTime = tmpEndTime
             syncApiData(user, pwd, transfer_from_location_url, start_time=tmpStartTime.strftime("%Y-%m-%dT%H:%M:%S"),
                         end_time=tmpEndTime.strftime("%Y-%m-%dT%H:%M:%S"))

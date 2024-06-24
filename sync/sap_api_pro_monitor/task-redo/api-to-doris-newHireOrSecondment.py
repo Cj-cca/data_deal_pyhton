@@ -141,36 +141,29 @@ resultColumn_ods_detail = ['batch_id',
 exceptionDataColumn_ods = ['unique_code', 'create_date', 'api_name', 'exception_data', 'exception_field',
                            'exception_type']
 
-apiName = 'New_Hire_Or_Secondment'
+apiName = 'New_Hire_Or_Secondment_future'
 apiUniqueKey = 'worker_id'
 fieldNullException = 'Field_Null_Value'
 fieldLengthException = 'Field_Length_Excess'
 tarExceptionDataTable = 'ods_hr_api_data_exception_records'
 NewHireOrSecondmentTableNameDwd = "dwd_new_hire_or_secondment_day_ef"
-NewHireOrSecondmentTableNameOds = "ods_new_hire_or_secondment_day_ei"
-NewHireOrSecondmentTableNameOdsDetail = "ods_new_hire_or_secondment_detail_day_ei"
+NewHireOrSecondmentTableNameOds = "ods_new_hire_or_secondment_future_day_ei"
+NewHireOrSecondmentTableNameOdsDetail = "ods_new_hire_or_secondment_future_detail_day_ei"
 
 tarEngine = create_engine(
-    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.35.241:9030/work_day_stage"
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/work_day_stage"
 )
 batchID = 0
 createTime = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def syncApiData(user_name, password, query_url, page_index=1, start_time='', end_time=''):
+def syncApiData(user_name, password, query_url, page_index=1):
     credentials = f"{user_name}:{password}"
     encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
     auth = f"Basic {encoded_credentials}"
-    if start_time != '':
-        headers = {
-            "Authorization": auth,
-            "beginDateTime": start_time,
-            "endDateTime": end_time
-        }
-    else:
-        headers = {
-            "Authorization": auth
-        }
+    headers = {
+        "Authorization": auth
+    }
     proxies = requests.utils.getproxies()
     if proxies and 'https' in proxies:
         proxies['https'] = proxies['http']
@@ -310,15 +303,23 @@ def deal_dwd(response):
 def check_repeat_data(dataframe_org):
     worker_id_list = "','".join(dataframe_org['worker_id'].to_list())
     sql = text(
-        f"SELECT {','.join(list(fieldMapping.values()))} FROM {NewHireOrSecondmentTableNameDwd} WHERE worker_id IN ('{worker_id_list}')")
+        f"""select {','.join(list(fieldMapping.values()))} from(
+    select hire_org.* from dwd_new_hire_or_secondment_day_ef as hire_org left join
+    (select worker_id,max(date_time_completed)as date_time_completed
+    from dwd_new_hire_or_secondment_day_ef group by worker_id)as hire_tar
+    on hire_org.worker_id = hire_tar.worker_id and hire_org.date_time_completed = hire_tar.date_time_completed
+    where hire_tar.worker_id is not null)as result where worker_id IN ('{worker_id_list}')""")
     src_onn = tarEngine.connect()
     data_frame = pandas.read_sql(sql, src_onn)
     if data_frame.size > 0:
         for index, row in data_frame.iterrows():
-            repeat_data = dataframe_org[dataframe_org['worker_id'] == row['worker_id']].iloc[0]
+            worker_id = row['worker_id']
+            repeat_data = dataframe_org[dataframe_org['worker_id'] == worker_id].iloc[0]
             if row.equals(repeat_data):
                 print("数据重复，重复主键", repeat_data['worker_id'])
             else:
+                date_time_completed = createTime.strftime('%m/%d/%Y %I:%M:%S %p')
+                dataframe_org.loc[dataframe_org['worker_id'] == worker_id, 'date_time_completed'] = date_time_completed
                 diff_row = row != repeat_data
                 print("数据更新，原始数据：\n", row[diff_row], "更新后的数据：\n", repeat_data[diff_row])
 
@@ -356,33 +357,8 @@ def api_field_check(dataframe, field_exception_type):
     return new_df
 
 
-def truncateTable(engine, table_name):
-    tarConn = engine.connect()
-    tarConn.execute(text(f"truncate table {table_name}"))
-    tarConn.close()
-    print("table truncate is complete")
-
-
 if __name__ == '__main__':
-    startTimeStr = ''
-    endTimeStr = ''
-    # user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
-    # pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
-    # new_hire_secondment_url = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/newhire-or-secondment"
-    user = "sb-a8531244-374b-414c-8944-0dbdf941c2e5!b1813|it-rt-pwc-dev!b39"
-    pwd = "f4aee3e5-9539-4568-be98-404a5c6ca253$yxW2FNy_fKA8a1Fjn44SM3zjSt4VGvIbzu9tQnHfWdg="
-    new_hire_secondment_url = "https://pwc-dev.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/newhire-or-secondment"
-    if startTimeStr == '':
-        # truncateTable(tarEngine, NewHireOrSecondmentTableNameDwd)
-        syncApiData(user, pwd, new_hire_secondment_url)
-    else:
-        startTime = datetime.datetime.strptime(startTimeStr, "%Y-%m-%dT%H:%M:%S")
-        endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%dT%H:%M:%S")
-        while startTime < endTime:
-            tmpStartTime = startTime
-            tmpEndTime = tmpStartTime + datetime.timedelta(days=1) if (tmpStartTime + datetime.timedelta(
-                days=1)) < endTime else endTime
-            createTime = tmpEndTime
-            syncApiData(user, pwd, new_hire_secondment_url, start_time=tmpStartTime.strftime("%Y-%m-%dT%H:%M:%S"),
-                        end_time=tmpEndTime.strftime("%Y-%m-%dT%H:%M:%S"))
-            startTime += datetime.timedelta(days=1)
+    user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
+    pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
+    new_hire_secondment_url = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/newhire-or-secondment/future"
+    syncApiData(user, pwd, new_hire_secondment_url)

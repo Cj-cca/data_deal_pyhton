@@ -72,3 +72,18 @@
 # DBName:   PwCMDM_HKReport
 # Account:    PwCMDM_HKReport_Replication
 # password: 6G1kc72r74pEqCx2
+
+
+# TL delay database
+# Server: CNCSQLPWV5007,1800
+# DB: TalentLinkDataExport
+# UserName:TLDataReader
+# Password: TLReaderP@ass123!
+# Table: JOB20240527
+
+
+# https://cncapppwv5008.asia.pwcinternal.com/talentlinkapi/v2/bookings/delta/deleted/2024-06-01/2024-06-07
+
+
+#dolphin
+# FPZ65CZ#&arJB9MdCALL

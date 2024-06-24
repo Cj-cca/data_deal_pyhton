@@ -12,6 +12,25 @@ from sqlalchemy import text
 from urllib.parse import quote_plus as urlquote
 
 notNullField = []
+resultField = ['Data.BKG_ID',
+               'Data.BKG_START',
+               'Data.BKG_END',
+               'Data.BKG_TIME',
+               'Data.BKG_JOB_ID',
+               'Data.BKG_JOB_ID_DESCR',
+               'Data.BKGJobCode',
+               'Data.BKGEmployeeAltID',
+               'Data.BKGClientCode',
+               'Data.BKGClientName',
+               'Data.BKG_LOADING',
+               'Data.BKG_RES_ID',
+               'Data.BKG_STATUS',
+               'Data.BKG_DELETED',
+               'Data.BKGLocalEmployeeID',
+               'Data.BKG_CHANGE_DATE',
+               'Data.BKG_GHOST']
+
+
 fieldMapping = {'Data.BKG_ID': 'bkg_id',
                 'Data.BKG_START': 'bkg_start',
                 'Data.BKG_END': 'bkg_end',
@@ -27,7 +46,9 @@ fieldMapping = {'Data.BKG_ID': 'bkg_id',
                 'Data.BKG_RES_ID': 'bkg_res_id',
                 'Data.BKG_STATUS': 'bkg_status',
                 'Data.BKG_DELETED': 'bkg_deleted',
-                'Data.BKGLocalEmployeeID': 'bkg_local_employee_id'}
+                'Data.BKGLocalEmployeeID': 'bkg_local_employee_id',
+                'Data.BKG_CHANGE_DATE': 'bkg_change_date',
+                'Data.BKG_GHOST': 'bkg_ghost'}
 
 resultColumn_ods = ['page_index',
                     'create_time',
@@ -118,6 +139,7 @@ def deal_dwd(response):
     if data_frame.size == 0:
         print("没有数据")
         return
+    data_frame = data_frame[resultField]
     data_frame.rename(columns=fieldMapping, inplace=True)
     data_frame["etl_date"] = createTime
     result_dataframe = data_frame.fillna('')
@@ -142,27 +164,27 @@ def truncate_table(table_name):
 if __name__ == '__main__':
     apiType = "bookings"
     startTimeStr = ''
-    endTimeStr = '2024-05-28'
+    endTimeStr = ''
     date_gap = 1
     # truncate_table(tarTableNameOds)
     # 增量同步数据
     APIDeltaUrl = "https://cncapppwv5008.asia.pwcinternal.com/talentlinkapi/v2/{apiType}/delta/{apiRequestStartTime}/{apiRequestEndTime}"
     if startTimeStr == '':
-        apiRequestStartTime = datetime.date.today() - datetime.timedelta(days=1)
+        apiRequestStartTime = datetime.date.today() - datetime.timedelta(days=3)
         apiRequestEndTime = datetime.date.today()
         URL = APIDeltaUrl.format(apiType=apiType, apiRequestStartTime=apiRequestStartTime,
                                  apiRequestEndTime=apiRequestEndTime)
         syncApiData(URL)
     else:
-        startTime = datetime.datetime.strptime(startTimeStr, "%Y-%m-%d").date()
-        endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%d").date()
+        startTime = datetime.datetime.strptime(startTimeStr, "%Y-%m-%dT%H:%M:%S")
+        endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%dT%H:%M:%S")
         while startTime < endTime:
             tmpStartTime = startTime
             tmpEndTime = tmpStartTime + datetime.timedelta(days=date_gap) if (tmpStartTime + datetime.timedelta(
                 days=date_gap)) < endTime else endTime
             createTime = tmpEndTime
-            URL = APIDeltaUrl.format(apiType=apiType, apiRequestStartTime=tmpStartTime,
-                                     apiRequestEndTime=tmpEndTime)
+            URL = APIDeltaUrl.format(apiType=apiType, apiRequestStartTime=tmpStartTime.strftime('%Y-%m-%dT%H:%M:%S'),
+                                     apiRequestEndTime=tmpEndTime.strftime('%Y-%m-%dT%H:%M:%S'))
             print("当前批次数据同步，开始时间：", tmpStartTime, "，结束时间：", tmpEndTime)
             syncApiData(URL)
             startTime += datetime.timedelta(days=date_gap)

@@ -27,7 +27,7 @@ union all select max(sd_row_creation) as max_time from finance_bi.ods_finance_dw
 """
 
 INSERT_TARGET_SQL = """
-insert into finance_bi.dwd_finance_revenue_data_day_ef(job_code, client_code, fiscal_year_name, month_end, job_partner, job_partner_staff_code, job_partner_staff_ou_code, uhc_name, uhc_prid, client_name, job_desc, job_office_code, product, job_ou_code, job_los, hours_in_revenue, revenue_in_hkd, em_in_hkd, gross_target_value_in_hkd, sd_row_creation, etl_time)
+insert into finance_bi.dwd_finance_revenue_data_day_ef(job_code, client_code, period_end, fiscal_year_name, month_end, job_partner, job_partner_staff_code, job_partner_staff_ou_code, uhc_name, uhc_prid, client_name, job_desc, job_office_code, product, job_ou_code, job_los, hours_in_revenue, revenue_in_hkd, em_in_hkd, gross_target_value_in_hkd, sd_row_creation, etl_time, sd_row_real_creation)
 WITH APC
 AS (
     SELECT CONCAT('CN-', int_assgnmt_id) AS current_job_key,
@@ -51,6 +51,7 @@ AS (
 SELECT
     CJ.job_code,
     Rev.client_key AS client_code,
+    Rev.date_key AS period_end,
     Cal.fiscal_year_name,
     Cal.month_end,
     JP.staff_name AS job_partner,
@@ -107,6 +108,7 @@ GROUP BY
     CC.uhc_name,
     CC.uhc_prid,
     Rev.client_key,
+    Rev.date_key,
     CC.client_name,
     CJ.job_code,
     CJ.job_desc,
@@ -165,11 +167,10 @@ if __name__ == '__main__':
     result_1 = srcConn.execute(text(
         f"select IF(date(sd_row_real_creation) = {CURR_DATE_STR}, 1, 0)as r from {targetTableName} limit 1"))
     # 获取第一条元素的第一个字段
-    generate_target_table(targetTableName)
-    # newestDateFlag = result_1.fetchone()[0]
-    # srcConn.close()
-    # if newestDateFlag == 0:
-    #     print("数据不是最新日期，任务开始执行")
-    #     generate_target_table(targetTableName)
-    # else:
-    #     print("数据日期为最新日期，无需执行")
+    newestDateFlag = result_1.fetchone()[0]
+    srcConn.close()
+    if newestDateFlag == 0:
+        print("数据不是最新日期，任务开始执行")
+        generate_target_table(targetTableName)
+    else:
+        print("数据日期为最新日期，无需执行")

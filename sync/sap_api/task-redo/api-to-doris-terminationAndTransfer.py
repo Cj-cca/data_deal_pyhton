@@ -11,17 +11,19 @@ import requests
 import base64
 from sqlalchemy import create_engine
 from sqlalchemy import text
+from urllib.parse import quote_plus as urlquote
 
 notNullField = 'Worker_ID'
-FieldsDate = ['Effective_Date', 'Date_Time_Initiated', 'Date_Time_Completed']
-
-fieldMapping = {'Worker_ID': 'Worker_ID', 'WID': 'WID', 'Worker_Name': 'Worker_Name',
-                'Business_Process_Event': 'Business_Process_Event', 'Business_Process_Name': 'Business_Process_Name',
-                'Business_Process_Type': 'Business_Process_Type', 'Business_Process_Reason': 'Business_Process_Reason',
-                'Business_Process_Reason_Category': 'Business_Process_Reason_Category',
-                'Effective_Date': 'Effective_Date', 'Subject': 'Subject', 'Transaction_Status': 'Transaction_Status',
-                'Date_Time_Initiated': 'Date_Time_Initiated', 'Initiator': 'Initiator',
-                'Date_Time_Completed': 'Date_Time_Completed'}
+FieldsDate = ['effective_date', 'date_time_initiated', 'date_time_completed']
+notNullFieldList = ['worker_id', 'worker_name', 'business_process_type', 'business_process_reason',
+                    'effective_date', 'transaction_status', 'date_time_completed']
+fieldMapping = {'Worker_ID': 'worker_id', 'WID': 'wid', 'Worker_Name': 'worker_name',
+                'Business_Process_Event': 'business_process_event', 'Business_Process_Name': 'business_process_name',
+                'Business_Process_Type': 'business_process_type', 'Business_Process_Reason': 'business_process_reason',
+                'Business_Process_Reason_Category': 'business_process_reason_category',
+                'Effective_Date': 'effective_date', 'Subject': 'subject', 'Transaction_Status': 'transaction_status',
+                'Date_Time_Initiated': 'date_time_initiated', 'Initiator': 'initiator',
+                'Date_Time_Completed': 'date_time_completed'}
 
 resultColumn_ods = ['page_index',
                     'create_time',
@@ -38,12 +40,21 @@ resultColumn_ods_detail = ['batch_id',
                            'query_url',
                            'comment'
                            ]
+exceptionDataColumn_ods = ['unique_code', 'create_date', 'api_name', 'exception_data', 'exception_field',
+                           'exception_type']
 
-TerminationAndTransferTableNameDwd = "TerminationAndTransfer_dwd"
-TerminationAndTransferTableNameOds = "TerminationAndTransfer_ods"
-TerminationAndTransferTableNameOdsDetail = "TerminationAndTransfer_ods_detail"
+apiName = 'Termination_And_Transfer'
+apiUniqueKey = 'worker_id'
+fieldNullException = 'Field_Null_Value'
+fieldLengthException = 'Field_Length_Excess'
+tarExceptionDataTable = 'ods_hr_api_data_exception_records'
+TerminationAndTransferTableNameDwd = "dwd_termination_and_transfer_day_ef"
+TerminationAndTransferTableNameOds = "ods_termination_and_transfer_day_ei"
+TerminationAndTransferTableNameOdsDetail = "ods_termination_and_transfer_detail_day_ei"
 
-tarEngine = create_engine('mysql+pymysql://root@10.158.16.244:9030/WorkDayStage')
+tarEngine = create_engine(
+    f"mysql+pymysql://admin_user:{urlquote('6a!F@^ac*jBHtc7uUdxC')}@10.158.15.148:6030/work_day_stage"
+)
 batchID = 0
 createTime = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -52,7 +63,7 @@ def syncApiData(user_name, password, query_url, page_index=1, start_time='', end
     credentials = f"{user_name}:{password}"
     encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
     auth = f"Basic {encoded_credentials}"
-    if start_time == '':
+    if start_time != '':
         headers = {
             "Authorization": auth,
             "beginDateTime": start_time,
@@ -120,11 +131,11 @@ def format_date(date):
     if date == '' or date == 'null':
         return result
     if len(date) > 18:
-        date_obj = datetime.datetime.fromisoformat(date)
+        date_obj = datetime.datetime.fromisoformat(date) + datetime.timedelta(hours=8)
         result = date_obj.strftime('%m/%d/%Y %I:%M:%S %p')
     elif len(date) == 4:
         date = f"{date}-01-01T12:00:00.000"
-        date_obj = datetime.datetime.fromisoformat(date)
+        date_obj = datetime.datetime.fromisoformat(date) + datetime.timedelta(hours=8)
         result = date_obj.strftime('%m/%d/%Y %I:%M:%S %p')
     else:
         print("Exception: unknown date format")
@@ -138,13 +149,95 @@ def format_fields_date(dataframe, index):
 
 def deal_dwd(response):
     data_frame = pandas.json_normalize(response)
+    if data_frame.size == 0:
+        print("没有数据")
+        return
     data_frame.rename(columns=fieldMapping, inplace=True)
     result_dataframe = data_frame.fillna('')
+    null_fields_dataframe = api_field_check(result_dataframe, fieldNullException)
+    if null_fields_dataframe.size != 0:
+        print("开始插入异常null数据")
+        null_except_data_count = null_fields_dataframe.to_sql(tarExceptionDataTable, tarEngine, if_exists='append',
+                                                              index=False)
+        print(f"{tarExceptionDataTable} null异常数据插入成功，异常数据条数{len(null_fields_dataframe)}，"
+              f"插入成功条数{null_except_data_count}")
     for i in range(0, len(result_dataframe.index)):
         format_fields_date(result_dataframe, i)
     result_dataframe = result_dataframe[list(fieldMapping.values())]
-    insert_count = result_dataframe.to_sql(TerminationAndTransferTableNameDwd, tarEngine, if_exists='append', index=False)
-    print(f"{TerminationAndTransferTableNameDwd}数据插入成功，总数据条数: {len(result_dataframe)}，插入行数：{insert_count}")
+    check_repeat_data(result_dataframe)
+    try:
+        new_column = pandas.Series([createTime] * len(result_dataframe), name='create_date')
+        result_dataframe = pandas.concat([result_dataframe, new_column], axis=1)
+        insert_count = result_dataframe.to_sql(TerminationAndTransferTableNameDwd, tarEngine, if_exists='append',
+                                               index=False)
+    except Exception as e:
+        # 判断是否是因为数据超长而造成的失败，如果是则将超长数据记录添加到新的集合
+        if '5025' in str(e.__dict__['orig']).split(',')[0]:
+            over_length_dataframe = api_field_check(result_dataframe, fieldLengthException)
+            if len(over_length_dataframe) != 0:
+                print("开始插入异常over length数据")
+                except_data_count = over_length_dataframe.to_sql(tarExceptionDataTable, tarEngine, if_exists='append',
+                                                                 index=False)
+                print(f"{tarExceptionDataTable} over length异常数据插入成功，异常数据条数{len(over_length_dataframe)}，"
+                      f"插入成功条数{except_data_count}")
+                insert_count = result_dataframe.to_sql(TerminationAndTransferTableNameDwd, tarEngine,
+                                                       if_exists='append',
+                                                       index=False)
+            else:
+                raise e
+        else:
+            raise e
+    print(
+        f"{TerminationAndTransferTableNameDwd}数据插入成功，总数据条数: {len(result_dataframe)}，插入行数：{insert_count}")
+
+
+def check_length(row):
+    over_length_field = []
+    for field, value in row.items():
+        if isinstance(value, str) and len(value) > 256:
+            over_length_field.append(field)
+    return over_length_field
+
+
+def check_null(row):
+    null_field_list = []
+    for field, value in row.items():
+        if field in notNullFieldList and value == '':
+            null_field_list.append(field)
+    return null_field_list
+
+
+def api_field_check(dataframe, field_exception_type):
+    new_df = pandas.DataFrame(columns=exceptionDataColumn_ods)
+    for index, row in dataframe.iterrows():
+        if field_exception_type == 'Field_Length_Excess':
+            exception_fields = check_length(row)
+        else:
+            exception_fields = check_null(row)
+        if len(exception_fields) != 0:
+            unique_code = row[apiUniqueKey]
+            new_df.loc[len(new_df.index)] = [unique_code, createTime, apiName, str(row.to_dict()),
+                                             ','.join(exception_fields),
+                                             field_exception_type]
+            if field_exception_type == 'Field_Length_Excess':
+                dataframe.drop(index, inplace=True)
+    return new_df
+
+
+def check_repeat_data(dataframe_org):
+    worker_id_list = "','".join(dataframe_org['worker_id'].to_list())
+    sql = text(
+        f"SELECT {','.join(list(fieldMapping.values()))} FROM {TerminationAndTransferTableNameDwd} WHERE worker_id IN ('{worker_id_list}')")
+    src_onn = tarEngine.connect()
+    data_frame = pandas.read_sql(sql, src_onn)
+    if data_frame.size > 0:
+        for index, row in data_frame.iterrows():
+            repeat_data = dataframe_org[dataframe_org['worker_id'] == row['worker_id']].iloc[0]
+            if row.equals(repeat_data):
+                print("数据重复，重复主键", repeat_data['worker_id'])
+            else:
+                diff_row = row != repeat_data
+                print("数据更新，原始数据：\n", row[diff_row], "更新后的数据：\n", repeat_data[diff_row])
 
 
 def truncateTable(engine, table_name):
@@ -155,16 +248,18 @@ def truncateTable(engine, table_name):
 
 
 if __name__ == '__main__':
-    startTimeStr = '2023-07-21'
-    endTimeStr = '2023-07-31'
-    user = "sb-a8531244-374b-414c-8944-0dbdf941c2e5!b1813|it-rt-pwc-dev!b39"
-    pwd = "f4aee3e5-9539-4568-be98-404a5c6ca253$yxW2FNy_fKA8a1Fjn44SM3zjSt4VGvIbzu9tQnHfWdg="
-    termination_and_transfer_url = "https://pwc-dev.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/transfer"
+    startTimeStr = ''
+    endTimeStr = ''
+    user = "sb-9e4a42e7-4439-4782-95ce-a149c045c26e!b2390|it-rt-pwc!b39"
+    pwd = "9732d1fd-2fb1-4080-97cb-cd82df084219$-BDmkDUlmMek7Dj9bS5w7Tqlzwdm7o2XIi5tPZaGMwQ="
+    # termination_and_transfer_url = "https://pwc-dev.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/transfer"
+    termination_and_transfer_url = "https://pwc.it-cpi010-rt.cpi.cn40.apps.platform.sapcloud.cn/http/vprofile/transfer"
     if startTimeStr == '':
+        # truncateTable(tarEngine, TerminationAndTransferTableNameDwd)
         syncApiData(user, pwd, termination_and_transfer_url)
     else:
-        startTime = datetime.datetime.strptime(startTimeStr, "%Y-%m-%d")
-        endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%d")
+        startTime = datetime.datetime.strptime(startTimeStr, "%Y-%m-%dT%H:%M:%S")
+        endTime = datetime.datetime.strptime(endTimeStr, "%Y-%m-%dT%H:%M:%S")
         while startTime < endTime:
             tmpStartTime = startTime
             tmpEndTime = tmpStartTime + datetime.timedelta(days=1)
